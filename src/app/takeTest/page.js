@@ -36,20 +36,39 @@ export default function TakeTest() {
 
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/evaluate', {
+      const response = await fetch('http://localhost:5000/api/evaluate-test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          user_id: userId,
+          test_id: testData.testId || `test_${Date.now()}`,
+          test_name: testData.testName || 'Custom Test',
           questions: testData.questions,
-          userAnswers: testData.questions.map((_, index) => userAnswers[index] || ""),
+          answers: Object.fromEntries(
+            Object.entries(userAnswers).map(([key, value]) => [String(key), value])
+          ),
+          time_taken: (testData.timeLimit * 60) - timeLeft,
         }),
       });
 
       if (response.ok) {
         const results = await response.json();
-        setTestResults(results);
+        
+        // Transform server response to match expected format
+        const transformedResults = {
+          total_questions: results.total_questions,
+          correct_answers: results.correct_answers,
+          incorrect_answers: results.incorrect_answers,
+          unattempted_answers: results.total_questions - results.correct_answers - results.incorrect_answers,
+          score: results.score,
+          max_score: results.total_questions * 4, // JEE scoring: +4 per correct
+          accuracy: results.percentage,
+          subject_scores: results.subject_scores || {}
+        };
+        
+        setTestResults(transformedResults);
 
         try {
           const testResultData = {
@@ -58,36 +77,31 @@ export default function TakeTest() {
             testName: testData.testName || 'Custom Test',
             testType: testData.testType || 'custom',
             subjects: testData.subjects || [],
-            totalQuestions: results.total_questions,
-            correctAnswers: results.correct_answers,
-            score: results.score,
+            totalQuestions: transformedResults.total_questions,
+            correctAnswers: transformedResults.correct_answers,
+            score: transformedResults.score,
             timeTaken: (testData.timeLimit * 60) - timeLeft,
-            subjectScores: results.subject_scores || {},
+            subjectScores: transformedResults.subject_scores,
             results: {
-              score: results.score,
-              total_questions: results.total_questions,
-              correct_answers: results.correct_answers,
-              incorrect_answers: results.incorrect_answers,
-              unattempted_answers: results.unattempted_answers,
-              accuracy: results.accuracy,
-              percentage: results.accuracy, // For dashboard compatibility
-              subject_scores: results.subject_scores,
-              performance_insights: results.performance_insights
+              score: transformedResults.score,
+              total_questions: transformedResults.total_questions,
+              correct_answers: transformedResults.correct_answers,
+              incorrect_answers: transformedResults.incorrect_answers,
+              unattempted_answers: transformedResults.unattempted_answers,
+              accuracy: transformedResults.accuracy,
+              percentage: transformedResults.accuracy, // For dashboard compatibility
+              subject_scores: transformedResults.subject_scores,
+              performance_insights: []
             },
             timeLimit: testData.timeLimit * 60,
             completedAt: new Date().toISOString(),
             timestamp: new Date().toISOString()
           };
 
-          await fetch('http://localhost:5000/api/save-test-result', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(testResultData),
-          });
+          // Test result is already saved by the evaluate-test endpoint
+          console.log('Test result saved successfully');
         } catch (saveError) {
-          console.error('Could not save test result:', saveError);
+          console.error('Could not process test result:', saveError);
         }
       } else {
         throw new Error('Failed to evaluate test');
@@ -348,59 +362,7 @@ export default function TakeTest() {
   const answeredCount = Object.keys(userAnswers).length;
   const unattemptedCount = testData.questions.length - answeredCount;
 
-  // Content rendering components that handle both text and images
-  const QuestionContent = ({ content }) => {
-    if (!content) return null;
-    
-    // Check if content contains images
-    const hasImages = content.includes('<img');
-    
-    if (hasImages) {
-      return (
-        <div 
-          dangerouslySetInnerHTML={{ __html: content }}
-          className="question-content"
-          style={{
-            '& img': {
-              maxWidth: '100%',
-              height: 'auto',
-              borderRadius: '8px',
-              margin: '10px 0'
-            }
-          }}
-        />
-      );
-    }
-    
-    return <MathRenderer text={content} />;
-  };
-
-  const OptionContent = ({ content }) => {
-    if (!content) return null;
-    
-    // Check if content contains images
-    const hasImages = content.includes('<img');
-    
-    if (hasImages) {
-      return (
-        <div 
-          dangerouslySetInnerHTML={{ __html: content }}
-          className="option-content"
-          style={{
-            '& img': {
-              maxWidth: '100%',
-              height: 'auto',
-              borderRadius: '4px',
-              margin: '5px 0'
-            }
-          }}
-        />
-      );
-    }
-    
-    return <MathRenderer text={content} />;
-  };
-
+  // MathRenderer is now imported from components
 
   // Get subject-wise question counts
   const getSubjectCounts = () => {
@@ -505,7 +467,7 @@ export default function TakeTest() {
           {/* Question Content */}
           <div className="bg-slate-800 rounded-xl p-6 mb-6">
             <div className="text-lg text-slate-100 mb-6 leading-relaxed">
-              <QuestionContent content={currentQuestion.question} />
+              <MathRenderer text={currentQuestion.question} />
             </div>
 
             {currentQuestion.image_data && (
@@ -546,7 +508,7 @@ export default function TakeTest() {
                         {optionLabel}
                       </div>
                       <div className="flex-1 text-sm">
-                        <OptionContent content={typeof option === 'string' ? option : option.text} />
+                        <MathRenderer text={option} />
                       </div>
                     </div>
                   </label>

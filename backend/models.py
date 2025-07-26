@@ -25,7 +25,7 @@ class Question:
     id: str
     question_text: str
     options: List[str]
-    correct_answer: str  # Single correct answer (A, B, C, D)
+    correct_answer: str # Single correct answer (A, B, C, D)
     subject: str
     topic: str
     difficulty: Difficulty
@@ -67,8 +67,8 @@ class TopicPerformance:
         self.total_attempted += 1
         if is_correct:
             self.correct_answers += 1
-        self.accuracy = (self.correct_answers / self.total_attempted) * 100
-        self.last_attempted = datetime.utcnow()
+            self.accuracy = (self.correct_answers / self.total_attempted) * 100
+            self.last_attempted = datetime.utcnow()
 
 @dataclass
 class UserProfile:

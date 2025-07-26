@@ -1,247 +1,221 @@
 "use client";
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import 'katex/dist/katex.min.css';
+import { InlineMath } from 'react-katex';
 
+/** 
+ * MathRenderer that handles the specific LaTeX format from MongoDB
+ */
 const MathRenderer = ({ text }) => {
-  const containerRef = useRef(null);
-
-  useEffect(() => {
-    if (containerRef.current && text) {
-      // Import renderMathInElement dynamically
-      import('katex/dist/contrib/auto-render.min.js').then((renderMathInElement) => {
-        const renderMath = renderMathInElement.default || renderMathInElement;
-        
-        // Comprehensive text processing for all LaTeX cases
-        let cleanText = text
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&amp;/g, '&')
-          .replace(/<br\s*\/?>/gi, ' ')
-          .replace(/<\/?[^>]+(>|$)/g, ' ')
-          .trim();
-
-        // Advanced LaTeX processing for all mathematical cases
-        cleanText = processAdvancedLatex(cleanText);
-
-        // Set the content
-        containerRef.current.innerHTML = cleanText;
-
-        // Render math using KaTeX auto-render with comprehensive settings
-        renderMath(containerRef.current, {
-          delimiters: [
-            {left: "$$", right: "$$", display: true},
-            {left: "$", right: "$", display: false},
-            {left: "\\[", right: "\\]", display: true},
-            {left: "\\(", right: "\\)", display: false}
-          ],
-          throwOnError: false,
-          errorColor: '#ff6b6b',
-          strict: false,
-          trust: true,
-          macros: {
-            // Fractions and divisions
-            "\\over": "\\frac{#1}{#2}",
-            
-            // Number sets
-            "\\R": "\\mathbb{R}",
-            "\\C": "\\mathbb{C}",
-            "\\N": "\\mathbb{N}",
-            "\\Z": "\\mathbb{Z}",
-            "\\Q": "\\mathbb{Q}",
-            
-            // Physics constants
-            "\\hbar": "\\hslash",
-            
-            // Custom macros for common expressions
-            "\\degree": "^\\circ",
-            "\\celsius": "^\\circ\\text{C}",
-            "\\fahrenheit": "^\\circ\\text{F}",
-            
-            // Chemical arrows
-            "\\yields": "\\rightarrow",
-            "\\equilibrium": "\\rightleftharpoons"
-          }
-        });
-      }).catch((error) => {
-        console.error('Failed to load KaTeX auto-render:', error);
-        // Fallback to plain text
-        if (containerRef.current) {
-          containerRef.current.innerHTML = text;
-        }
-      });
-    }
-  }, [text]);
-
   if (!text) return null;
 
+  try {
+    // Step 1: Smart cleanup that preserves HTML but fixes LaTeX issues
+    let cleanText = text
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      // Only convert specific <br> patterns that cause issues
+      .replace(/<br\s*\/?><br\s*\/?>/gi, ' ')  // Double <br> to space
+      .replace(/\n<br\s*\/?>/gi, ' ')          // Newline + <br> to space
+      .replace(/<br\s*\/?>(?=\s*\$)/gi, ' ')   // <br> before $ to space
+      // Fix common LaTeX issues from your MongoDB data
+      .replace(/\\begin\{vmatrix\}/g, '\\begin{vmatrix}')
+      .replace(/\\end\{vmatrix\}/g, '\\end{vmatrix}')
+      // Fix escaped braces that should be literal
+      .replace(/\\\{([^}]*)\\\}/g, '\\{$1\\}')
+      // Fix common LaTeX command issues
+      .replace(/\\over\s+/g, '\\over ')
+      .replace(/\\left\s*\\\{/g, '\\left\\{')
+      .replace(/\\right\s*\\\}/g, '\\right\\}')
+      // Clean up excessive whitespace but preserve single spaces
+      .replace(/\s{3,}/g, ' ')
+      .trim();
+
+    // Step 2: Parse and render the content
+    return renderMathContent(cleanText);
+
+  } catch (error) {
+    console.error('MathRenderer error:', error);
+    // Fallback: render as HTML
+    return <span dangerouslySetInnerHTML={{ __html: text }} />;
+  }
+};
+
+/**
+ * Parse and render content with proper math and HTML handling
+ */
+const renderMathContent = (content) => {
+  const elements = [];
+  let currentIndex = 0;
+
+  // Enhanced regex to handle both $$ and $ delimiters
+  const mathRegex = /(?<!\\)(\$\$[\s\S]+?\$\$|\$[^$]+?\$)/g;
+  let match;
+
+  while ((match = mathRegex.exec(content)) !== null) {
+    // Add text before the math expression
+    if (match.index > currentIndex) {
+      const textBefore = content.slice(currentIndex, match.index);
+      if (textBefore.trim()) {
+        // Render as HTML to handle <sup>, <sub>, <img>, etc.
+        elements.push(
+          <span
+            key={`text-${currentIndex}`}
+            dangerouslySetInnerHTML={{ __html: textBefore }}
+          />
+        );
+      }
+    }
+
+    // Process the math expression
+    const mathExpression = match[1];
+    const isBlock = mathExpression.startsWith('$$') && mathExpression.endsWith('$$');
+
+    // Extract math content
+    let mathContent;
+    if (isBlock) {
+      mathContent = mathExpression.slice(2, -2).trim();
+    } else {
+      mathContent = mathExpression.slice(1, -1).trim();
+    }
+
+    // Clean up the LaTeX content
+    mathContent = cleanLatexContent(mathContent);
+
+    // Render the math - ALWAYS as inline to prevent line breaks
+    if (mathContent) {
+      try {
+        // Force ALL math to be inline, regardless of $$ or $
+        elements.push(
+          <span key={`math-${match.index}`} style={{
+            display: 'inline',
+            verticalAlign: 'baseline',
+            margin: '0 2px'
+          }}>
+            <InlineMath math={mathContent} />
+          </span>
+        );
+      } catch (katexError) {
+        console.error('KaTeX error:', katexError, 'Content:', mathContent);
+        // Enhanced fallback: try to render simpler version
+        const simplifiedContent = simplifyLatexForFallback(mathContent);
+        try {
+          elements.push(
+            <span key={`fallback-${match.index}`} style={{
+              display: 'inline',
+              verticalAlign: 'baseline',
+              margin: '0 2px'
+            }}>
+              <InlineMath math={simplifiedContent} />
+            </span>
+          );
+        } catch (secondError) {
+          // Final fallback: show styled error
+          elements.push(
+            <span key={`error-${match.index}`} style={{
+              color: '#e74c3c',
+              fontFamily: 'monospace',
+              backgroundColor: '#ffeaa7',
+              padding: '1px 3px',
+              borderRadius: '2px',
+              fontSize: '0.9em'
+            }}>
+              {mathExpression}
+            </span>
+          );
+        }
+      }
+    }
+
+    currentIndex = match.index + match[0].length;
+  }
+
+  // Add any remaining text
+  if (currentIndex < content.length) {
+    const remainingText = content.slice(currentIndex);
+    if (remainingText.trim()) {
+      // Render as HTML to handle any remaining HTML tags
+      elements.push(
+        <span
+          key={`final-${currentIndex}`}
+          dangerouslySetInnerHTML={{ __html: remainingText }}
+        />
+      );
+    }
+  }
+
+  // If no math expressions found, render as HTML
+  if (elements.length === 0) {
+    return <span dangerouslySetInnerHTML={{ __html: content }} />;
+  }
+
   return (
-    <span 
-      ref={containerRef}
-      style={{ 
-        display: 'inline', 
-        lineHeight: '1.8',
-        verticalAlign: 'baseline'
-      }}
-    />
+    <span style={{
+      display: 'inline',
+      lineHeight: 'inherit'
+    }}>
+      {elements}
+    </span>
   );
 };
 
-// Comprehensive LaTeX processing function
-function processAdvancedLatex(text) {
-  // Don't process if already has proper $ delimiters
-  if (text.includes('$') && text.match(/\$[^$]+\$/)) {
-    return text;
-  }
+/**
+ * Clean up LaTeX content for proper rendering
+ */
+const cleanLatexContent = (content) => {
+  return content
+    // Fix common LaTeX issues
+    .replace(/\\left\(/g, '\\left(')
+    .replace(/\\right\)/g, '\\right)')
+    .replace(/\\left\[/g, '\\left[')
+    .replace(/\\right\]/g, '\\right]')
+    .replace(/\\left\{/g, '\\left\\{')
+    .replace(/\\right\}/g, '\\right\\}')
+    .replace(/\\left\|/g, '\\left|')
+    .replace(/\\right\|/g, '\\right|')
+    // Fix matrix notation - convert vmatrix to simple vertical bars for better compatibility
+    .replace(/\\begin\{vmatrix\}/g, '|')
+    .replace(/\\end\{vmatrix\}/g, '|')
+    // Fix over notation
+    .replace(/\\over\s+/g, '\\over ')
+    // Fix common fraction issues
+    .replace(/\{([^}]+)\}\\over\{([^}]+)\}/g, '\\frac{$1}{$2}')
+    // Fix spacing issues
+    .replace(/\s+/g, ' ')
+    // Fix specific issues from your data
+    .replace(/\{\s*([^}]+)\s*\}/g, '{$1}') // Clean up braces
+    .replace(/\^\s*\{/g, '^{') // Fix superscript spacing
+    .replace(/_\s*\{/g, '_{') // Fix subscript spacing
+    // Fix common chemistry notation
+    .replace(/\{([^}]+)\}/g, '{$1}') // Ensure proper brace handling
+    .trim();
+};
 
-  // 1. MATRICES AND DETERMINANTS
-  text = text.replace(/\\begin\{(matrix|pmatrix|bmatrix|vmatrix|Vmatrix|smallmatrix)\}([\s\S]*?)\\end\{\1\}/g, 
-    '$\\begin{$1}$2\\end{$1}$');
-  
-  // 2. COMPLEX NUMBERS
-  text = text.replace(/([+-]?\d*\.?\d*)\s*([+-])\s*([+-]?\d*\.?\d*)\s*i\b/g, '$1 $2 $3i$');
-  text = text.replace(/\b(\d+)\s*\+\s*(\d+)i\b/g, '$1 + $2i$');
-  text = text.replace(/\b(\d+)\s*-\s*(\d+)i\b/g, '$1 - $2i$');
-  
-  // 3. DIMENSIONAL ANALYSIS
-  text = text.replace(/\[([MLT\^\{\}\-\d\s]+)\]/g, '$[$1]$');
-  text = text.replace(/\[([A-Z]+)(\^?\{?[\-\d]+\}?)*\]/g, '$[$1$2]$');
-  
-  // 4. PHYSICS FORMULAS
-  text = text.replace(/\\vec\{([^}]+)\}/g, '$\\vec{$1}$');
-  text = text.replace(/\\hat\{([^}]+)\}/g, '$\\hat{$1}$');
-  text = text.replace(/\\overrightarrow\{([^}]+)\}/g, '$\\overrightarrow{$1}$');
-  text = text.replace(/\\dot\{([^}]+)\}/g, '$\\dot{$1}$');
-  text = text.replace(/\\ddot\{([^}]+)\}/g, '$\\ddot{$1}$');
-  
-  // 5. CHEMICAL EQUATIONS AND FORMULAS
-  // Handle chemical formulas with subscripts
-  text = text.replace(/([A-Z][a-z]?)(\d+)/g, '$1_{$2}$');
-  text = text.replace(/([A-Z][a-z]?)\{(\d+)\}/g, '$1_{$2}$');
-  
-  // Handle chemical charges
-  text = text.replace(/([A-Z][a-z]?)(\d*)([+-]+)/g, '$1$2^{$3}$');
-  text = text.replace(/(\d+)([+-])/g, '^{$1$2}$');
-  
-  // Chemical arrows
-  text = text.replace(/\\rightarrow/g, '$\\rightarrow$');
-  text = text.replace(/\\leftarrow/g, '$\\leftarrow$');
-  text = text.replace(/\\rightleftharpoons/g, '$\\rightleftharpoons$');
-  text = text.replace(/\\to/g, '$\\to$');
-  
-  // 6. INTEGRALS AND LIMITS
-  text = text.replace(/\\int/g, '$\\int$');
-  text = text.replace(/\\iint/g, '$\\iint$');
-  text = text.replace(/\\iiint/g, '$\\iiint$');
-  text = text.replace(/\\oint/g, '$\\oint$');
-  text = text.replace(/\\lim/g, '$\\lim$');
-  text = text.replace(/\\sum/g, '$\\sum$');
-  text = text.replace(/\\prod/g, '$\\prod$');
-  
-  // 7. SYSTEM OF EQUATIONS
-  text = text.replace(/\\begin\{(cases|align|aligned|equation|eqnarray)\}([\s\S]*?)\\end\{\1\}/g, 
-    '$\\begin{$1}$2\\end{$1}$');
-  
-  // 8. FRACTIONS
-  text = text.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '$\\frac{$1}{$2}$');
-  text = text.replace(/\{([^{}]*?)\\over\s*([^{}]*?)\}/g, '$\\frac{$1}{$2}$');
-  text = text.replace(/([^$])\\over([^$])/g, '$1$\\over$$2');
-  
-  // 9. GREEK LETTERS
-  const greekLetters = [
-    'alpha', 'beta', 'gamma', 'delta', 'epsilon', 'varepsilon', 'zeta', 'eta', 'theta', 'vartheta',
-    'iota', 'kappa', 'lambda', 'mu', 'nu', 'xi', 'omicron', 'pi', 'varpi', 'rho', 'varrho',
-    'sigma', 'varsigma', 'tau', 'upsilon', 'phi', 'varphi', 'chi', 'psi', 'omega',
-    'Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta', 'Iota', 'Kappa',
-    'Lambda', 'Mu', 'Nu', 'Xi', 'Omicron', 'Pi', 'Rho', 'Sigma', 'Tau', 'Upsilon',
-    'Phi', 'Chi', 'Psi', 'Omega'
-  ];
-  
-  greekLetters.forEach(letter => {
-    const regex = new RegExp(`\\\\${letter}(?![a-zA-Z])`, 'g');
-    text = text.replace(regex, `$\\${letter}$`);
-  });
-  
-  // 10. SUPERSCRIPTS AND SUBSCRIPTS
-  text = text.replace(/([A-Za-z0-9])\^(\{[^}]+\}|\w)/g, '$1^{$2}$');
-  text = text.replace(/([A-Za-z0-9])_(\{[^}]+\}|\w)/g, '$1_{$2}$');
-  
-  // 11. MATHEMATICAL OPERATORS
-  const operators = [
-    'times', 'cdot', 'div', 'pm', 'mp', 'ast', 'star', 'circ', 'bullet',
-    'leq', 'geq', 'neq', 'approx', 'equiv', 'sim', 'simeq', 'cong', 'propto',
-    'subset', 'supset', 'subseteq', 'supseteq', 'in', 'notin', 'ni', 'owns',
-    'cup', 'cap', 'setminus', 'emptyset', 'varnothing', 'infty', 'partial',
-    'nabla', 'exists', 'forall', 'neg', 'land', 'lor', 'angle', 'perp', 'parallel'
-  ];
-  
-  operators.forEach(op => {
-    const regex = new RegExp(`\\\\${op}(?![a-zA-Z])`, 'g');
-    text = text.replace(regex, `$\\${op}$`);
-  });
-  
-  // 12. TRIGONOMETRIC AND MATHEMATICAL FUNCTIONS
-  const functions = [
-    'sin', 'cos', 'tan', 'sec', 'csc', 'cot', 'sinh', 'cosh', 'tanh', 'sech', 'csch', 'coth',
-    'arcsin', 'arccos', 'arctan', 'arcsec', 'arccsc', 'arccot',
-    'log', 'ln', 'lg', 'exp', 'max', 'min', 'sup', 'inf', 'det', 'dim', 'ker', 'deg', 'gcd', 'lcm'
-  ];
-  
-  functions.forEach(func => {
-    const regex = new RegExp(`\\\\${func}(?![a-zA-Z])`, 'g');
-    text = text.replace(regex, `$\\${func}$`);
-  });
-  
-  // 13. SPECIAL SYMBOLS AND ARROWS
-  const arrows = [
-    'rightarrow', 'leftarrow', 'leftrightarrow', 'Rightarrow', 'Leftarrow', 'Leftrightarrow',
-    'uparrow', 'downarrow', 'updownarrow', 'Uparrow', 'Downarrow', 'Updownarrow',
-    'nearrow', 'searrow', 'swarrow', 'nwarrow'
-  ];
-  
-  arrows.forEach(arrow => {
-    const regex = new RegExp(`\\\\${arrow}(?![a-zA-Z])`, 'g');
-    text = text.replace(regex, `$\\${arrow}$`);
-  });
-  
-  // 14. TEXT FORMATTING IN MATH
-  text = text.replace(/\\text\{([^{}]+)\}/g, '$\\text{$1}$');
-  text = text.replace(/\\mathrm\{([^{}]+)\}/g, '$\\mathrm{$1}$');
-  text = text.replace(/\\mathbf\{([^{}]+)\}/g, '$\\mathbf{$1}$');
-  text = text.replace(/\\mathit\{([^{}]+)\}/g, '$\\mathit{$1}$');
-  text = text.replace(/\\mathcal\{([^{}]+)\}/g, '$\\mathcal{$1}$');
-  text = text.replace(/\\mathbb\{([^{}]+)\}/g, '$\\mathbb{$1}$');
-  text = text.replace(/\\mathfrak\{([^{}]+)\}/g, '$\\mathfrak{$1}$');
-  
-  // 15. SQUARE ROOTS AND RADICALS
-  text = text.replace(/\\sqrt\{([^{}]+)\}/g, '$\\sqrt{$1}$');
-  text = text.replace(/\\sqrt\[([^\]]+)\]\{([^{}]+)\}/g, '$\\sqrt[$1]{$2}$');
-  
-  // 16. BRACKETS AND DELIMITERS
-  text = text.replace(/\\left\(/g, '$\\left($');
-  text = text.replace(/\\right\)/g, '$\\right)$');
-  text = text.replace(/\\left\[/g, '$\\left[$');
-  text = text.replace(/\\right\]/g, '$\\right]$');
-  text = text.replace(/\\left\{/g, '$\\left\\{$');
-  text = text.replace(/\\right\}/g, '$\\right\\}$');
-  text = text.replace(/\\left\|/g, '$\\left|$');
-  text = text.replace(/\\right\|/g, '$\\right|$');
-  
-  // 17. COMPLEX EXPRESSIONS (handle variables in braces)
-  text = text.replace(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g, '${$1}$');
-  
-  // 18. UNITS AND MEASUREMENTS
-  text = text.replace(/(\d+)\s*(kg|g|mg|m|cm|mm|km|s|ms|A|V|W|J|N|Pa|bar|mol|K|°C|°F)\b/g, '$1$ $2');
-  
-  // Clean up multiple consecutive $ signs and empty math blocks
-  text = text.replace(/\$+/g, '$');
-  text = text.replace(/\$\s*\$/g, '');
-  text = text.replace(/\$([^$]*)\$/g, (match, content) => {
-    if (!content.trim()) return '';
-    return match;
-  });
-  
-  return text;
-}
+/**
+ * Simplify LaTeX for fallback rendering
+ */
+const simplifyLatexForFallback = (content) => {
+  return content
+    // Convert complex structures to simpler ones
+    .replace(/\\begin\{[^}]+\}.*?\\end\{[^}]+\}/g, '[matrix]')
+    .replace(/\\left[\\(\\[\\{|]/g, '')
+    .replace(/\\right[\\)\\]\\}|]/g, '')
+    .replace(/\\over/g, '/')
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
+    // Keep basic math symbols
+    .replace(/\\alpha/g, 'α')
+    .replace(/\\beta/g, 'β')
+    .replace(/\\gamma/g, 'γ')
+    .replace(/\\delta/g, 'δ')
+    .replace(/\\theta/g, 'θ')
+    .replace(/\\pi/g, 'π')
+    .replace(/\\sigma/g, 'σ')
+    .replace(/\\omega/g, 'ω')
+    .replace(/\\lambda/g, 'λ')
+    .replace(/\\mu/g, 'μ')
+    .trim();
+};
 
 export default MathRenderer;

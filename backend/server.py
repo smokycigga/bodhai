@@ -84,7 +84,8 @@ def clean_mongo_doc(doc):
 def load_and_vectorize_questions():
     """Load questions from JSON and store in both MongoDB and ChromaDB for intelligent retrieval"""
     global all_questions
-    pyqs_folder = "./pyqs"
+    # Use absolute path to pyqs folder
+    pyqs_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pyqs")
 
     logger.info("🧠 Loading questions with intelligent vectorization...")
     question_count = 0
@@ -125,220 +126,63 @@ def load_and_vectorize_questions():
         except Exception as e:
             logger.warning(f"Error saving to MongoDB: {e}")
 
-def format_latex_content(text):
-    """COMPREHENSIVE LaTeX formatter - handles ALL mathematical expressions"""
-    if not text:
-        return text
+def process_latex_for_rendering(text: str) -> str:
+    """
+    Cleans and formats text containing LaTeX for proper inline and block rendering.
+    This is the complete version handling all specified cases.
+    """
+    if not text or not isinstance(text, str):
+        return ""
 
-    # Preserve images first
-    image_pattern = r'<img[^>]*>'
-    images = re.findall(image_pattern, text)
-    image_placeholders = {}
-    for i, img in enumerate(images):
-        placeholder = f"__IMAGE_PLACEHOLDER_{i}__"
-        image_placeholders[placeholder] = img
-        text = text.replace(img, placeholder)
+    # 1. Clean up newlines and HTML tags to create a single line
+    processed_content = re.sub(r'<br\s*/?>|\n|\\n', ' ', text)
+    processed_content = processed_content.replace('&nbsp;', ' ').strip()
 
-    # Clean HTML tags and entities (except preserved images)
-    text = re.sub(r'<br\s*/?>', ' ', text)
-    text = re.sub(r'<[^>]+>', '', text)
-    text = text.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+    # 2. Standardize common symbols into LaTeX commands
+    symbol_map = {
+        '→': '\\rightarrow', '⇌': '\\rightleftharpoons', '≤': '\\leq', '≥': '\\geq',
+        '≠': '\\neq', '≈': '\\approx', '×': '\\times', '⋅': '\\cdot', '÷': '\\div',
+        '±': '\\pm', '∞': '\\infty', '°': '^{\\circ}', '∫': '\\int', '∑': '\\sum',
+        '√': '\\sqrt', 'α': '\\alpha', 'β': '\\beta', 'γ': '\\gamma', 'δ': '\\delta',
+        'ε': '\\epsilon', 'θ': '\\theta', 'λ': '\\lambda', 'μ': '\\mu', 'π': '\\pi',
+        'ρ': '\\rho', 'σ': '\\sigma', 'ω': '\\omega', 'Γ': '\\Gamma', 'Δ': '\\Delta',
+        'Θ': '\\Theta', 'Λ': '\\Lambda', 'Π': '\\Pi', 'Σ': '\\Sigma', 'Ω': '\\Omega',
+        '\\Complex': '\\mathbb{C}', '\\Real': '\\mathbb{R}', '\\Integer': '\\mathbb{Z}',
+        '\\Re': '\\operatorname{Re}', '\\Im': '\\operatorname{Im}',
+    }
+    for uni, latex in symbol_map.items():
+        processed_content = processed_content.replace(uni, latex)
+
+    # 3. Handle specific LaTeX structures
+    # Handle \over expressions
+    processed_content = re.sub(r'\{([^{}]+)\}\\over\{([^{}]+)\}', r'\\frac{\1}{\2}', processed_content)
     
-    # Don't double-wrap already wrapped expressions
-    if '$' in text and text.count('$') >= 2:
-        # Restore images
-        for placeholder, img in image_placeholders.items():
-            text = text.replace(placeholder, img)
-        return text
+    # Handle Matrices & Determinants
+    processed_content = re.sub(r'\\left\|(.*?)\\right\|', r'\\begin{vmatrix}\1\\end{vmatrix}', processed_content)
     
-    # 1. FRACTIONS - \frac{a}{b} and {a \over b}
-    text = re.sub(r'\{([^{}]*?)\\over\s*\{([^{}]*?)\}\}', r'$\\frac{\1}{\2}$', text)
-    text = re.sub(r'\{([^{}]*?)\\over([^{}]*?)\}', r'$\\frac{\1}{\2}$', text)
-    text = re.sub(r'\\frac\{([^{}]+)\}\{([^{}]+)\}', r'$\\frac{\1}{\2}$', text)
+    # Handle Systems of Equations
+    processed_content = re.sub(r'\\left\\\{\s*\\begin{matrix}(.*?)\\end{matrix}\s*\\right\.', r'\\begin{cases}\1\\end{cases}', processed_content)
+
+    # Handle Chemical Equations (e.g., H2O -> H_{2}O)
+    processed_content = re.sub(r'([A-Z][a-z]?)(\d+)', r'\1_{\2}', processed_content)
     
-    # 2. SQUARE ROOTS - \sqrt{x}
-    text = re.sub(r'\\sqrt\{([^{}]+)\}', r'$\\sqrt{\1}$', text)
+    # Handle Dimensional Analysis (e.g., [M L T-2] -> [M L T^{-2}])
+    def process_dims(match):
+        dims = match.group(1)
+        return f"[{re.sub(r'([MLT])\\s*(-?\\d+)', r'\\1^{\\2}', dims)}]"
+    processed_content = re.sub(r'\[([MLT\s\d-]+)\]', process_dims, processed_content)
+
+    # Handle multi-character superscripts and subscripts
+    processed_content = re.sub(r'\^([a-zA-Z0-_0-9]{2,})', r'^{\1}', processed_content)
+    processed_content = re.sub(r'_([a-zA-Z0-9]{2,})', r'_{\1}', processed_content)
     
-    # 3. VECTORS - \overrightarrow{a}, \vec{b}
-    text = re.sub(r'\\overrightarrow\{([^{}]+)\}', r'$\\overrightarrow{\1}$', text)
-    text = re.sub(r'\\vec\{([^{}]+)\}', r'$\\vec{\1}$', text)
-    
-    # 4. MATRICES - All types (pmatrix, bmatrix, vmatrix, etc.)
-    matrix_types = ['matrix', 'pmatrix', 'bmatrix', 'vmatrix', 'Vmatrix', 'aligned', 'cases']
-    for matrix_type in matrix_types:
-        text = re.sub(f'\\\\begin\\{{{matrix_type}\\}}([\\s\\S]*?)\\\\end\\{{{matrix_type}\\}}', 
-                     f'$$\\\\begin{{{matrix_type}}}\\1\\\\end{{{matrix_type}}}$$', text)
-    
-    # 5. LEFT/RIGHT DELIMITERS
-    text = re.sub(r'\\left\\?\{([^}]+)\\right\\?\}', r'$\\left\\{\1\\right\\}$', text)
-    text = re.sub(r'\\left\(([^)]+)\\right\)', r'$\\left(\1\\right)$', text)
-    text = re.sub(r'\\left\[([^\]]+)\\right\]', r'$\\left[\1\\right]$', text)
-    
-    # 6. GREEK LETTERS - \alpha, \beta, \pi, etc.
-    greek_letters = [
-        'alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 
-        'iota', 'kappa', 'lambda', 'mu', 'nu', 'xi', 'omicron', 'pi', 'rho', 
-        'sigma', 'tau', 'upsilon', 'phi', 'chi', 'psi', 'omega',
-        'Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta',
-        'Iota', 'Kappa', 'Lambda', 'Mu', 'Nu', 'Xi', 'Omicron', 'Pi', 'Rho',
-        'Sigma', 'Tau', 'Upsilon', 'Phi', 'Chi', 'Psi', 'Omega'
-    ]
-    for letter in greek_letters:
-        text = re.sub(f'\\\\{letter}(?![a-zA-Z])', f'$\\\\{letter}$', text)
-    
-    # 7. OPERATORS - \times, \rightarrow, \leq, etc.
-    operators = [
-        'rightarrow', 'leftarrow', 'to', 'Rightarrow', 'Leftarrow', 'leftrightarrow',
-        'times', 'cdot', 'div', 'pm', 'mp', 'ast', 'star', 'circ', 'bullet',
-        'leq', 'geq', 'neq', 'approx', 'equiv', 'sim', 'simeq', 'cong',
-        'subset', 'supset', 'subseteq', 'supseteq', 'in', 'notin', 'ni',
-        'cup', 'cap', 'setminus', 'emptyset', 'varnothing'
-    ]
-    for op in operators:
-        text = re.sub(f'\\\\{op}(?![a-zA-Z])', f'$\\\\{op}$', text)
-    
-    # 8. FUNCTIONS - \sin, \cos, \log, \lim, etc.
-    functions = [
-        'sin', 'cos', 'tan', 'sec', 'csc', 'cot', 'sinh', 'cosh', 'tanh',
-        'log', 'ln', 'lg', 'exp', 'lim', 'max', 'min', 'sup', 'inf',
-        'det', 'dim', 'ker', 'deg', 'gcd', 'lcm', 'arg', 'Re', 'Im'
-    ]
-    for func in functions:
-        text = re.sub(f'\\\\{func}(?![a-zA-Z])', f'$\\\\{func}$', text)
-    
-    # 9. INTEGRALS/SUMS - \int, \sum, \prod
-    big_ops = ['int', 'iint', 'iiint', 'oint', 'sum', 'prod', 'coprod', 'bigcup', 'bigcap']
-    for op in big_ops:
-        text = re.sub(f'\\\\{op}(?![a-zA-Z])', f'$\\\\{op}$', text)
-    
-    # 10. SPECIAL SYMBOLS - \infty, \partial, \nabla, etc.
-    symbols = [
-        'infty', 'partial', 'nabla', 'exists', 'forall', 'neg', 'land', 'lor',
-        'angle', 'perp', 'parallel', 'triangle', 'square', 'diamond',
-        'clubsuit', 'diamondsuit', 'heartsuit', 'spadesuit', 'hbar', 'ell'
-    ]
-    for symbol in symbols:
-        text = re.sub(f'\\\\{symbol}(?![a-zA-Z])', f'$\\\\{symbol}$', text)
-    
-    # 11. TEXT FUNCTIONS
-    text = re.sub(r'\\text\{([^{}]+)\}', r'$\\text{\1}$', text)
-    text = re.sub(r'\\mathrm\{([^{}]+)\}', r'$\\mathrm{\1}$', text)
-    text = re.sub(r'\\mathbf\{([^{}]+)\}', r'$\\mathbf{\1}$', text)
-    text = re.sub(r'\\mathit\{([^{}]+)\}', r'$\\mathit{\1}$', text)
-    text = re.sub(r'\\mathcal\{([^{}]+)\}', r'$\\mathcal{\1}$', text)
-    
-    # 12. CHEMICAL IONS FIRST - Mn2+ → Mn$^{2+}$ (must come before chemical formulas)
-    text = re.sub(r'([A-Z][a-z]?)(\d+)([+-])(?!\$)', r'\1$^{\2\3}$', text)
-    
-    # 13. CHEMICAL FORMULAS - H2SO4 → H$_{2}$SO$_{4}$ (after ions to avoid conflicts)
-    text = re.sub(r'([A-Z][a-z]?)(\d+)(?![+-])(?!\$)', r'\1$_{\2}$', text)
-    
-    # 14. COMPLEX IONS - [Cr(NH3)6]Cl3 → [Cr(NH$_{3}$)6]Cl$_{3}$
-    # Handle subscripts in complex formulas
-    text = re.sub(r'\(([A-Z][a-z]?)(\d+)\)', r'(\1$_{\2}$)', text)
-    
-    # 15. SUPERSCRIPTS AND SUBSCRIPTS - x^2, y_1
-    text = re.sub(r'([A-Za-z0-9])\^(\{[^}]+\}|\w)', r'$\1^{\2}$', text)
-    text = re.sub(r'([A-Za-z0-9])_(\{[^}]+\}|\w)', r'$\1_{\2}$', text)
-    
-    # 16. DIMENSIONAL ANALYSIS - [MLT^{-2}] → [ML$T^{-2}$]
-    text = re.sub(r'\[([MLT\^{}\-\d\s]+)\]', r'$[\1]$', text)
-    
-    # 17. VARIABLES IN CURLY BRACES - {r_4} → $r_4$
-    text = re.sub(r'\{([a-zA-Z_][a-zA-Z0-9_]*)\}', r'$\1$', text)
-    
-    # 18. COMMON PHYSICS/CHEMISTRY PATTERNS
-    # Handle charges like 2+ or 3-
-    text = re.sub(r'(\d+)([+-])(?!\$)', r'$^{\1\2}$', text)
-    
-    # Clean up multiple consecutive $ signs
-    text = re.sub(r'\$+', '$', text)
-    text = re.sub(r'\$\s*\$', '', text)
-    
-    return text
-    
-    # 4. MATRICES - All types
-    matrix_types = ['matrix', 'pmatrix', 'bmatrix', 'vmatrix', 'Vmatrix', 'aligned']
-    for matrix_type in matrix_types:
-        text = re.sub(f'\\\\begin\\{{{matrix_type}\\}}([\\s\\S]*?)\\\\end\\{{{matrix_type}\\}}', 
-                     f'$$\\\\begin{{{matrix_type}}}\\1\\\\end{{{matrix_type}}}$$', text)
-    
-    # 5. LEFT/RIGHT DELIMITERS
-    text = re.sub(r'\\left\\?\{([^}]+)\\right\\?\}', r'$\\left\\{\1\\right\\}$', text)
-    text = re.sub(r'\\left\(([^)]+)\\right\)', r'$\\left(\1\\right)$', text)
-    text = re.sub(r'\\left\[([^\]]+)\\right\]', r'$\\left[\1\\right]$', text)
-    
-    # 6. GREEK LETTERS
-    greek_letters = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 
-                    'iota', 'kappa', 'lambda', 'mu', 'nu', 'xi', 'omicron', 'pi', 'rho', 
-                    'sigma', 'tau', 'upsilon', 'phi', 'chi', 'psi', 'omega',
-                    'Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta',
-                    'Iota', 'Kappa', 'Lambda', 'Mu', 'Nu', 'Xi', 'Omicron', 'Pi', 'Rho',
-                    'Sigma', 'Tau', 'Upsilon', 'Phi', 'Chi', 'Psi', 'Omega']
-    
-    for letter in greek_letters:
-        text = re.sub(f'\\\\{letter}(?![a-zA-Z])', f'$\\\\{letter}$', text)
-    
-    # 7. ARROWS AND OPERATORS
-    operators = ['rightarrow', 'leftarrow', 'to', 'Rightarrow', 'Leftarrow', 'leftrightarrow',
-                'times', 'cdot', 'div', 'pm', 'mp', 'ast', 'star', 'circ', 'bullet',
-                'leq', 'geq', 'neq', 'approx', 'equiv', 'sim', 'simeq', 'cong',
-                'subset', 'supset', 'subseteq', 'supseteq', 'in', 'notin', 'ni',
-                'cup', 'cap', 'setminus', 'emptyset', 'varnothing']
-    
-    for op in operators:
-        text = re.sub(f'\\\\{op}(?![a-zA-Z])', f'$\\\\{op}$', text)
-    
-    # 8. FUNCTIONS
-    functions = ['sin', 'cos', 'tan', 'sec', 'csc', 'cot', 'sinh', 'cosh', 'tanh',
-                'log', 'ln', 'lg', 'exp', 'lim', 'max', 'min', 'sup', 'inf',
-                'det', 'dim', 'ker', 'deg', 'gcd', 'lcm']
-    
-    for func in functions:
-        text = re.sub(f'\\\\{func}(?![a-zA-Z])', f'$\\\\{func}$', text)
-    
-    # 9. INTEGRALS, SUMS, PRODUCTS
-    big_ops = ['int', 'iint', 'iiint', 'oint', 'sum', 'prod', 'coprod', 'bigcup', 'bigcap']
-    for op in big_ops:
-        text = re.sub(f'\\\\{op}(?![a-zA-Z])', f'$\\\\{op}$', text)
-    
-    # 10. SPECIAL SYMBOLS
-    symbols = ['infty', 'partial', 'nabla', 'exists', 'forall', 'neg', 'land', 'lor',
-              'angle', 'perp', 'parallel', 'triangle', 'square', 'diamond',
-              'clubsuit', 'diamondsuit', 'heartsuit', 'spadesuit']
-    
-    for symbol in symbols:
-        text = re.sub(f'\\\\{symbol}(?![a-zA-Z])', f'$\\\\{symbol}$', text)
-    
-    # 11. TEXT FUNCTIONS
-    text = re.sub(r'\\text\{([^{}]+)\}', r'$\\text{\1}$', text)
-    text = re.sub(r'\\mathrm\{([^{}]+)\}', r'$\\mathrm{\1}$', text)
-    text = re.sub(r'\\mathbf\{([^{}]+)\}', r'$\\mathbf{\1}$', text)
-    text = re.sub(r'\\mathit\{([^{}]+)\}', r'$\\mathit{\1}$', text)
-    
-    # 12. SUPERSCRIPTS AND SUBSCRIPTS
-    text = re.sub(r'([A-Za-z0-9])\^(\{[^}]+\}|\w)', r'$\1^{\2}$', text)
-    text = re.sub(r'([A-Za-z0-9])_(\{[^}]+\}|\w)', r'$\1_{\2}$', text)
-    
-    # 13. CHEMICAL FORMULAS - Handle subscripts in chemical compounds
-    text = re.sub(r'([A-Z][a-z]?)(\d+)', r'\1$_{\2}$', text)  # H2O -> H$_2$O
-    text = re.sub(r'([A-Z][a-z]?)\{(\d+)\}', r'\1$_{\2}$', text)  # H{2}O -> H$_2$O
-    
-    # 14. CURLY BRACES WITH VARIABLES
-    text = re.sub(r'\{([a-zA-Z_][a-zA-Z0-9_]*)\}', r'$\1$', text)
-    
-    # 15. DIMENSIONAL ANALYSIS - [MLT^{-2}] format
-    text = re.sub(r'\[([MLT\^{}\-\d\s]+)\]', r'$[\1]$', text)
-    
-    # Clean up multiple consecutive $ signs
-    text = re.sub(r'\$+', '$', text)
-    text = re.sub(r'\$\s*\$', '', text)
-    
-    # Restore images
-    for placeholder, img in image_placeholders.items():
-        text = text.replace(placeholder, img)
-    
-    return text
+    # 4. Identify if content should be a block-level formula
+    block_pattern = re.compile(r'(\\sum|\\frac|\\lim|\\int|\\begin\{aligned\}|\\begin\{matrix\}|\\begin\{vmatrix\}|\\begin\{cases\})')
+    if block_pattern.search(processed_content):
+        processed_content = processed_content.replace('$', '')
+        return f"$${processed_content.strip()}$$"
+
+    return processed_content
 
 def process_question_with_intelligence(question_data):
     """Process question with enhanced metadata for intelligent retrieval"""
@@ -348,11 +192,12 @@ def process_question_with_intelligence(question_data):
             return None
 
         content = question_data.get('content', '').strip()
+        content = re.sub(r'<br\s*/?>|\n|\\n', ' ', content)
+        content = re.sub(r'\s+', ' ', content).strip()
         if not content:
             return None
 
-        # Format LaTeX content for proper rendering
-        content = format_latex_content(content)
+        
 
         # Extract options
         options = []
@@ -361,7 +206,8 @@ def process_question_with_intelligence(question_data):
                 option_text = opt.get('content', '').strip()
                 if option_text:
                     # Format LaTeX content in options too
-                    formatted_option_text = format_latex_content(option_text)
+                    formatted_option_text = re.sub(r'<br\s*/?>|\n|\\n', ' ', option_text)
+                    formatted_option_text = re.sub(r'\s+', ' ', formatted_option_text).strip()
                     options.append({
                         'id': opt.get('identifier', ''),
                         'text': formatted_option_text
@@ -1836,11 +1682,13 @@ def evaluate_test():
         incorrect_answers = 0
         total_score = 0
         detailed_results = []
+        
+        logger.info(f"Evaluating test for user {user_id}: {total_questions} questions, answers: {answers}")
 
         for i, question in enumerate(questions):
             user_answer = answers.get(str(i), '')
             correct_answer = question.get('correct_answer', '')
-            is_correct = user_answer == correct_answer
+            is_correct = user_answer.upper() == correct_answer.upper() if user_answer and correct_answer else False
 
             if is_correct:
                 correct_answers += 1
@@ -1852,6 +1700,9 @@ def evaluate_test():
                 score = 0
 
             total_score += score
+            
+            # Debug logging
+            logger.info(f"Q{i}: user='{user_answer}', correct='{correct_answer}', is_correct={is_correct}, score={score}")
 
             detailed_results.append({
                 'question_id': question.get('question_id', f'q_{i}'),
@@ -1995,89 +1846,3 @@ if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     logger.info(f"Starting JEE Main Server on port {port}")
     app.run(host='0.0.0.0', port=port, debug=True)
-
-def get_question_by_id(question_id):
-    """Get a question by its ID from the global questions list"""
-    try:
-        for question in all_questions:
-            if question['question_id'] == question_id:
-                return question
-        return None
-    except Exception as e:
-        logger.warning(f"Error getting question by ID: {e}")
-        return None
-
-def analyze_learning_trends(user_id):
-    """Analyze learning trends for a user"""
-    try:
-        # Get recent test results
-        recent_results = list(test_results_collection.find({
-            'user_id': user_id
-        }).sort('completed_at', -1).limit(10))
-        
-        if not recent_results:
-            return {}
-        
-        # Calculate trends
-        scores = [result.get('score', 0) for result in recent_results]
-        accuracies = [result.get('accuracy', 0) for result in recent_results]
-        
-        trends = {
-            'score_trend': 'improving' if len(scores) > 1 and scores[0] > scores[-1] else 'stable',
-            'accuracy_trend': 'improving' if len(accuracies) > 1 and accuracies[0] > accuracies[-1] else 'stable',
-            'recent_average_score': sum(scores) / len(scores) if scores else 0,
-            'recent_average_accuracy': sum(accuracies) / len(accuracies) if accuracies else 0
-        }
-        
-        return trends
-    except Exception as e:
-        logger.warning(f"Error analyzing learning trends: {e}")
-        return {}
-
-def generate_personalization_insights(user_intelligence):
-    """Generate insights about personalization for the user"""
-    try:
-        weak_topics_count = sum(len(topics) for topics in user_intelligence.get('weak_topics', {}).values())
-        mistake_patterns_count = len(user_intelligence.get('mistake_patterns', {}))
-        
-        insights = {
-            'personalization_level': 'high' if weak_topics_count > 5 else 'medium' if weak_topics_count > 2 else 'low',
-            'weak_topics_identified': weak_topics_count,
-            'mistake_patterns_found': mistake_patterns_count,
-            'recommendation': 'Focus on weak topics' if weak_topics_count > 3 else 'Continue balanced practice'
-        }
-        
-        return insights
-    except Exception as e:
-        logger.warning(f"Error generating personalization insights: {e}")
-        return {}
-
-def get_database_health():
-    """Get database health status"""
-    try:
-        # Test MongoDB connection
-        mongo_client.admin.command('ping')
-        mongo_status = 'healthy'
-        
-        # Test ChromaDB connection
-        chroma_status = 'healthy'
-        try:
-            vector_db.get_memory_usage()
-        except:
-            chroma_status = 'degraded'
-        
-        return {
-            'status': 'healthy' if mongo_status == 'healthy' and chroma_status == 'healthy' else 'degraded',
-            'mongodb': mongo_status,
-            'chromadb': chroma_status
-        }
-    except Exception as e:
-        logger.error(f"Database health check failed: {e}")
-        return {'status': 'unhealthy', 'error': str(e)}
-
-if __name__ == '__main__':
-    # Load questions on startup
-    load_and_vectorize_questions()
-    
-    # Start the Flask app
-    app.run(debug=True, host='0.0.0.0', port=5000)
