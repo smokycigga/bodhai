@@ -17,6 +17,7 @@ import statistics
 # Import our enhanced modules
 from vector_db import VectorDBManager
 from models import Question, ExamType, Difficulty
+from gemini_analyzer import GeminiTestAnalyzer
 
 load_dotenv()
 
@@ -45,6 +46,7 @@ try:
     user_profiles_collection = db['user_profiles']
     test_results_collection = db['test_results']
     questions_collection = db['questions']
+    user_tasks_collection = db['user_tasks']  # New collection for task management
     logger.info("MongoDB connected successfully")
 except Exception as e:
     logger.error(f"MongoDB connection failed: {e}")
@@ -57,6 +59,14 @@ try:
 except Exception as e:
     logger.error(f"ChromaDB initialization failed: {e}")
     exit(1)
+
+# Initialize Gemini AI Analyzer
+try:
+    gemini_analyzer = GeminiTestAnalyzer()
+    logger.info("Gemini AI Test Analyzer initialized successfully")
+except Exception as e:
+    logger.warning(f"Gemini AI initialization failed: {e}")
+    gemini_analyzer = None
 
 # Global questions storage
 all_questions = []
@@ -1658,6 +1668,217 @@ def get_user_stats(user_id):
             'stats': {}
         }), 500
 
+@app.route('/api/gemini-analysis', methods=['POST'])
+def generate_gemini_analysis():
+    """Generate comprehensive analysis using Gemini AI"""
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'error': 'User ID is required'
+            }), 400
+
+        # Prepare comprehensive user data for Gemini analysis
+        user_data = {
+            'user_id': user_id,
+            'test_id': data.get('test_id', f'analysis_{int(datetime.now(timezone.utc).timestamp())}'),
+            'test_date': datetime.now(timezone.utc).isoformat(),
+            'test_results': data.get('test_results', {}),
+            'subject_performance': data.get('subject_performance', {}),
+            'chapter_performance': data.get('chapter_performance', {}),
+            'user_profile': data.get('user_profile', {}),
+            'test_questions': data.get('test_questions', []),
+            'user_answers': data.get('user_answers', {}),
+            'detailed_mistakes': data.get('detailed_mistakes', []),
+            'intelligence_insights': data.get('intelligence_insights', {})
+        }
+
+        if not gemini_analyzer:
+            logger.warning("Gemini AI not initialized, providing fallback analysis")
+            return jsonify({
+                'success': True,
+                'analysis': create_detailed_fallback_analysis(user_data)
+            }), 200
+
+        # Log the data being sent for analysis
+        logger.info(f"Generating analysis for user {user_id}")
+        logger.info(f"Test results: {user_data['test_results']}")
+        logger.info(f"Subject performance: {user_data['subject_performance']}")
+        logger.info(f"Questions count: {len(user_data.get('test_questions', []))}")
+        logger.info(f"Detailed mistakes count: {len(user_data.get('detailed_mistakes', []))}")
+
+        # Generate analysis using Gemini AI
+        analysis = gemini_analyzer.analyze_test_results(user_data)
+        
+        logger.info(f"Successfully generated Gemini analysis for user {user_id}")
+        
+        return jsonify({
+            'success': True,
+            'analysis': analysis
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error generating Gemini analysis: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'analysis': create_detailed_fallback_analysis(user_data)
+        }), 500
+
+def create_detailed_fallback_analysis(user_data):
+    """Create detailed fallback analysis when Gemini AI is not available"""
+    test_results = user_data.get('test_results', {})
+    subject_performance = user_data.get('subject_performance', {})
+    test_questions = user_data.get('test_questions', [])
+    detailed_mistakes = user_data.get('detailed_mistakes', [])
+    
+    score_percentage = test_results.get('score_percentage', 0)
+    correct_answers = test_results.get('correct_answers', 0)
+    total_questions = test_results.get('total_questions', 0)
+    incorrect_answers = test_results.get('incorrect_answers', 0)
+    
+    # Analyze subjects tested
+    subjects_tested = list(subject_performance.keys()) if subject_performance else []
+    if not subjects_tested and test_questions:
+        subjects_tested = list(set(q.get('subject', 'Unknown') for q in test_questions))
+    
+    # Create subject analysis
+    subject_analysis = {}
+    for subject in subjects_tested:
+        subject_questions = [q for q in test_questions if q.get('subject') == subject]
+        subject_perf = subject_performance.get(subject, {})
+        
+        subject_analysis[subject] = {
+            'accuracy_percentage': subject_perf.get('percentage', 0),
+            'total_questions': subject_perf.get('total', len(subject_questions)),
+            'correct_answers': subject_perf.get('correct', 0),
+            'key_insights': [
+                f"You attempted {subject_perf.get('total', 0)} {subject} questions",
+                f"Your accuracy in {subject} was {subject_perf.get('percentage', 0)}%",
+                f"{'Good performance' if subject_perf.get('percentage', 0) >= 60 else 'Needs improvement'} in {subject}"
+            ]
+        }
+    
+    # Analyze mistakes
+    mistake_topics = []
+    for mistake in detailed_mistakes:
+        topic = mistake.get('topic', mistake.get('chapter', 'Unknown topic'))
+        if topic not in mistake_topics:
+            mistake_topics.append(topic)
+    
+    return {
+        'overall_performance': {
+            'summary': f'You scored {correct_answers}/{total_questions} ({score_percentage:.1f}%) in this test covering {", ".join(subjects_tested)}. {"Good work!" if score_percentage >= 60 else "Focus on improvement areas to boost your score."}',
+            'score_percentage': score_percentage,
+            'performance_level': 'Excellent' if score_percentage >= 80 else 'Good' if score_percentage >= 60 else 'Needs Improvement',
+            'rank_estimate': f'Based on {score_percentage:.1f}% score, estimated rank range: {"Top 25%" if score_percentage >= 80 else "Top 50%" if score_percentage >= 60 else "Needs improvement"}'
+        },
+        'subject_analysis': subject_analysis,
+        'error_analysis': {
+            'total_errors': incorrect_answers,
+            'error_patterns': [
+                {
+                    'pattern_type': 'Conceptual',
+                    'frequency': len(mistake_topics),
+                    'subjects_affected': subjects_tested,
+                    'description': f'You made mistakes in {len(mistake_topics)} different topics',
+                    'root_cause': 'Need to strengthen concept understanding',
+                    'fix_strategy': 'Review theory and practice more problems in weak areas'
+                }
+            ],
+            'critical_mistakes': [
+                {
+                    'question_topic': mistake.get('topic', 'Unknown'),
+                    'subject': mistake.get('subject', 'Unknown'),
+                    'mistake_type': 'Conceptual',
+                    'correct_approach': 'Review the concept and practice similar problems',
+                    'why_wrong': 'Incorrect understanding or calculation error',
+                    'practice_recommendation': f"Practice more problems on {mistake.get('topic', 'this topic')}"
+                } for mistake in detailed_mistakes[:3]  # Top 3 mistakes
+            ],
+            'improvement_priority': mistake_topics[:3]  # Top 3 topics to improve
+        },
+        'strengths_analysis': [
+            f"You got {correct_answers} questions correct" if correct_answers > 0 else "Focus on building strengths",
+            f"Your overall accuracy is {score_percentage:.1f}%" if score_percentage > 0 else "Work on improving accuracy",
+            "Keep practicing to identify more strengths"
+        ],
+        'improvement_areas': [
+            f"Focus on {topic}" for topic in mistake_topics[:3]
+        ] if mistake_topics else ["Review all topics covered in the test"],
+        'personalized_recommendations': {
+            'immediate_actions': [
+                f"Review the {incorrect_answers} questions you got wrong",
+                f"Practice more problems on {mistake_topics[0] if mistake_topics else 'weak topics'}",
+                "Clarify concepts with teacher or study materials"
+            ],
+            'study_plan': {
+                'daily_schedule': {
+                    'morning_session': {
+                        'duration': '90 minutes',
+                        'focus': f'{subjects_tested[0] if subjects_tested else "Mathematics"} theory',
+                        'activities': ['Read concepts', 'Make notes'],
+                        'target': 'Concept clarity'
+                    },
+                    'afternoon_session': {
+                        'duration': '120 minutes',
+                        'focus': 'Problem solving',
+                        'activities': ['Solve practice questions', 'Review solutions'],
+                        'target': 'Application skills'
+                    },
+                    'evening_session': {
+                        'duration': '60 minutes',
+                        'focus': 'Revision',
+                        'activities': ['Quick revision', 'Formula practice'],
+                        'target': 'Retention'
+                    }
+                },
+                'weekly_plan': {
+                    'week_1': {
+                        'primary_focus': f'Improve in {mistake_topics[0] if mistake_topics else "weak areas"}',
+                        'daily_topics': mistake_topics[:7] if len(mistake_topics) >= 7 else mistake_topics + ['Revision'] * (7 - len(mistake_topics)),
+                        'practice_questions': 20,
+                        'revision_topics': subjects_tested,
+                        'target_improvement': f'Improve accuracy to {min(score_percentage + 15, 95):.0f}%',
+                        'success_metric': 'Score above 70% in practice tests'
+                    }
+                }
+            },
+            'goal_setting': {
+                'short_term_goals': [
+                    f'Improve accuracy from {score_percentage:.1f}% to {min(score_percentage + 15, 95):.0f}%',
+                    f'Master the {len(mistake_topics)} topics you struggled with',
+                    'Complete 50 practice questions this week'
+                ],
+                'accuracy_targets': {
+                    'overall_accuracy': f'{min(score_percentage + 15, 95):.0f}%',
+                    'subject_wise_targets': {
+                        subject: f'{min(perf.get("percentage", 0) + 20, 95):.0f}%' 
+                        for subject, perf in subject_performance.items()
+                    }
+                }
+            }
+        },
+        'time_analysis': {
+            'efficiency_insights': [
+                f'You spent an average of {user_data.get("intelligence_insights", {}).get("time_per_question", 0):.1f} seconds per question',
+                'Practice with time limits to improve speed',
+                'Focus on accuracy first, then work on speed'
+            ]
+        },
+        'motivational_insights': {
+            'progress_indicators': [
+                f'You got {correct_answers} questions right - that\'s progress!',
+                f'Your {score_percentage:.1f}% score shows you understand the basics',
+                'Each test helps you identify areas to improve'
+            ],
+            'encouragement': f'You\'re on the right track with {score_percentage:.1f}%! Focus on the {len(mistake_topics)} topics you struggled with, and you\'ll see improvement in your next test.'
+        }
+    }
+
 @app.route('/api/evaluate-test', methods=['POST'])
 def evaluate_test():
     """Evaluate test and save results with proper date"""
@@ -1837,6 +2058,212 @@ def update_user_profile_from_test(user_id, test_result):
 
     except Exception as e:
         logger.error(f"Error updating user profile: {e}")
+
+# ==================== TASK MANAGEMENT API ENDPOINTS ====================
+
+@app.route('/api/user-tasks/<user_id>', methods=['GET'])
+def get_user_tasks(user_id):
+    """Get all tasks for a specific user"""
+    try:
+        # Get query parameters for filtering
+        date_filter = request.args.get('date')
+        category_filter = request.args.get('category')
+        status_filter = request.args.get('status')
+
+        # Build query
+        query = {'user_id': user_id}
+
+        if date_filter:
+            # Filter by specific date
+            start_date = datetime.fromisoformat(date_filter.replace('Z', '+00:00'))
+            end_date = start_date + timedelta(days=1)
+            query['scheduled_date'] = {
+                '$gte': start_date,
+                '$lt': end_date
+            }
+
+        if category_filter:
+            query['category'] = category_filter
+
+        if status_filter:
+            query['status'] = status_filter
+
+        tasks = list(user_tasks_collection.find(query).sort('scheduled_date', 1))
+
+        # Clean tasks for JSON response
+        cleaned_tasks = []
+        for task in tasks:
+            cleaned_task = clean_mongo_doc(task)
+            cleaned_task['_id'] = str(task['_id'])
+            cleaned_tasks.append(cleaned_task)
+
+        return jsonify({
+            'success': True,
+            'tasks': cleaned_tasks,
+            'count': len(cleaned_tasks)
+        })
+
+    except Exception as e:
+        logger.error(f"Error fetching user tasks: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/user-tasks', methods=['POST'])
+def create_task():
+    """Create a new task"""
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        required_fields = ['user_id', 'title', 'scheduled_date', 'category']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+
+        # Create task document
+        task = {
+            'user_id': data['user_id'],
+            'title': data['title'],
+            'description': data.get('description', ''),
+            'category': data['category'],  # study, practice, test, review, custom
+            'priority': data.get('priority', 'medium'),  # low, medium, high
+            'duration': data.get('duration', 60),  # duration in minutes
+            'scheduled_date': datetime.fromisoformat(data['scheduled_date'].replace('Z', '+00:00')),
+            'status': data.get('status', 'pending'),  # pending, in_progress, completed, cancelled
+            'progress': data.get('progress', 0),  # 0-100
+            'created_at': datetime.now(timezone.utc),
+            'updated_at': datetime.now(timezone.utc),
+            'tags': data.get('tags', []),
+            'subject': data.get('subject', ''),
+            'difficulty': data.get('difficulty', 'medium')
+        }
+
+        result = user_tasks_collection.insert_one(task)
+        task['_id'] = result.inserted_id
+
+        # Clean the task for JSON response
+        cleaned_task = clean_mongo_doc(task)
+        cleaned_task['_id'] = str(result.inserted_id)
+
+        return jsonify({
+            'success': True,
+            'task': cleaned_task,
+            'message': 'Task created successfully'
+        })
+
+    except Exception as e:
+        logger.error(f"Error creating task: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/user-tasks/<task_id>', methods=['PUT'])
+def update_task(task_id):
+    """Update an existing task"""
+    try:
+        data = request.get_json()
+
+        # Build update document
+        update_data = {'updated_at': datetime.now(timezone.utc)}
+
+        # Update allowed fields
+        allowed_fields = [
+            'title', 'description', 'category', 'priority', 'duration',
+            'scheduled_date', 'status', 'progress', 'tags', 'subject', 'difficulty'
+        ]
+
+        for field in allowed_fields:
+            if field in data:
+                if field == 'scheduled_date':
+                    update_data[field] = datetime.fromisoformat(data[field].replace('Z', '+00:00'))
+                else:
+                    update_data[field] = data[field]
+
+        result = user_tasks_collection.update_one(
+            {'_id': ObjectId(task_id)},
+            {'$set': update_data}
+        )
+
+        if result.matched_count == 0:
+            return jsonify({'success': False, 'error': 'Task not found'}), 404
+
+        # Get updated task
+        updated_task = user_tasks_collection.find_one({'_id': ObjectId(task_id)})
+
+        # Clean the task for JSON response
+        cleaned_task = clean_mongo_doc(updated_task)
+        cleaned_task['_id'] = str(updated_task['_id'])
+
+        return jsonify({
+            'success': True,
+            'task': cleaned_task,
+            'message': 'Task updated successfully'
+        })
+
+    except Exception as e:
+        logger.error(f"Error updating task: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/user-tasks/<task_id>', methods=['DELETE'])
+def delete_task(task_id):
+    """Delete a task"""
+    try:
+        result = user_tasks_collection.delete_one({'_id': ObjectId(task_id)})
+
+        if result.deleted_count == 0:
+            return jsonify({'success': False, 'error': 'Task not found'}), 404
+
+        return jsonify({
+            'success': True,
+            'message': 'Task deleted successfully'
+        })
+
+    except Exception as e:
+        logger.error(f"Error deleting task: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/user-tasks/<user_id>/calendar', methods=['GET'])
+def get_calendar_tasks(user_id):
+    """Get tasks for calendar view (monthly)"""
+    try:
+        # Get month and year from query params
+        month = int(request.args.get('month', datetime.now().month))
+        year = int(request.args.get('year', datetime.now().year))
+
+        # Calculate date range for the month
+        start_date = datetime(year, month, 1, tzinfo=timezone.utc)
+        if month == 12:
+            end_date = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            end_date = datetime(year, month + 1, 1, tzinfo=timezone.utc)
+
+        # Get tasks for the month
+        tasks = list(user_tasks_collection.find({
+            'user_id': user_id,
+            'scheduled_date': {
+                '$gte': start_date,
+                '$lt': end_date
+            }
+        }).sort('scheduled_date', 1))
+
+        # Clean tasks and group by date
+        calendar_data = {}
+        for task in tasks:
+            cleaned_task = clean_mongo_doc(task)
+            cleaned_task['_id'] = str(task['_id'])
+
+            date_key = task['scheduled_date'].strftime('%Y-%m-%d')
+            if date_key not in calendar_data:
+                calendar_data[date_key] = []
+            calendar_data[date_key].append(cleaned_task)
+
+        return jsonify({
+            'success': True,
+            'calendar_data': calendar_data,
+            'month': month,
+            'year': year
+        })
+
+    except Exception as e:
+        logger.error(f"Error fetching calendar tasks: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     # Load and vectorize questions on startup

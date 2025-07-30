@@ -1,0 +1,325 @@
+{
+  "overall_performance": {
+    "score_percentage": 20.0,
+    "performance_level": "Needs Improvement",
+    "rank_estimate": "Lower percentile",
+    "summary": "The student achieved a score of 1 out of 5 in the Mathematics test, indicating a need for improvement.  Subjects tested included Mathematics, specifically Algebra, Trigonometry, and Calculus. Key weaknesses were identified in Quadratic Equations, Differentiation, and Integration, while Linear Equations were mastered."
+  },
+  "subject_analysis": {
+    "Mathematics": {
+      "accuracy_percentage": 20.0,
+      "total_questions": 5,
+      "correct_answers": 1,
+      "attempted_questions": 4,
+      "chapter_breakdown": [
+        {
+          "chapter": "Algebra",
+          "accuracy": 50.0,
+          "questions_count": 2,
+          "topics_covered": [
+            "Linear Equations",
+            "Quadratic Equations"
+          ],
+          "performance": "Average"
+        },
+        {
+          "chapter": "Calculus",
+          "accuracy": 0.0,
+          "questions_count": 2,
+          "topics_covered": [
+            "Differentiation",
+            "Integration"
+          ],
+          "performance": "Weak"
+        },
+        {
+          "chapter": "Trigonometry",
+          "accuracy": 0.0,
+          "questions_count": 1,
+          "topics_covered": [
+            "Basic Ratios"
+          ],
+          "performance": "Weak"
+        }
+      ],
+      "key_insights": [
+        "Inconsistency across chapters, with strong performance in Linear Equations but significant weakness in Calculus and Trigonometry.",
+        "Difficulty with medium-level questions, suggesting foundational gaps in core concepts.",
+        "One question left unattempted, highlighting potential time management issues or lack of confidence in certain topics."
+      ],
+      "improvement_areas": [
+        "Differentiation",
+        "Integration",
+        "Trigonometric Ratios"
+      ],
+      "specific_recommendations": [
+        "Review differentiation and integration rules thoroughly, focusing on power rule and basic integration techniques.",
+        "Practice a variety of problems, starting with easier ones and gradually increasing difficulty."
+      ]
+    }
+  },
+  "error_analysis": {
+    "total_errors": 3,
+    "error_patterns": [
+      {
+        "pattern_type": "Conceptual",
+        "frequency": 3,
+        "subjects_affected": [
+          "Mathematics"
+        ],
+        "description": "Consistent errors in applying fundamental concepts of Quadratic Equations, Differentiation, and Integration.",
+        "root_cause": "Lack of thorough understanding of core principles and formulas.",
+        "fix_strategy": "Focus on understanding the underlying concepts, not just memorizing formulas."
+      }
+    ],
+    "critical_mistakes": [
+      {
+        "question_number": 2,
+        "question_topic": "Quadratic Equations",
+        "subject": "Mathematics",
+        "chapter": "Algebra",
+        "mistake_type": "Incorrect factoring",
+        "correct_approach": "Factor the quadratic equation x\u00b2 - 5x + 6 = 0 by finding two numbers that add up to -5 and multiply to 6.  These are -2 and -3. Therefore, (x-2)(x-3) = 0, and the roots are x = 2 and x = 3.",
+        "why_wrong": "The student likely made a mistake in factoring the quadratic expression.",
+        "practice_recommendation": "Practice factoring quadratic equations extensively, using different methods."
+      },
+      {
+        "question_number": 3,
+        "question_topic": "Differentiation",
+        "subject": "Mathematics",
+        "chapter": "Calculus",
+        "mistake_type": "Incorrect application of the power rule",
+        "correct_approach": "Apply the power rule: d/dx (x\u207f) = nx\u207f\u207b\u00b9.  For x\u00b3 + 2x\u00b2, the derivative is 3x\u00b2 + 4x.",
+        "why_wrong": "The student likely misapplied the power rule for differentiation.",
+        "practice_recommendation": "Practice differentiating various polynomial functions using the power rule and other differentiation rules."
+      },
+      {
+        "question_number": 4,
+        "question_topic": "Integration",
+        "subject": "Mathematics",
+        "chapter": "Calculus",
+        "mistake_type": "Incorrect integration of a polynomial",
+        "correct_approach": "Integrate each term separately: \u222b(2x + 3)dx = x\u00b2 + 3x + C, where C is the constant of integration.",
+        "why_wrong": "The student likely made a mistake in applying the basic rules of integration.",
+        "practice_recommendation": "Practice integrating various polynomial functions and learn about the constant of integration."
+      }
+    ],
+    "improvement_priority": [
+      "Differentiation",
+      "Integration",
+      "Quadratic Equations"
+    ]
+  },
+  "strengths_analysis": [
+    "Strong understanding of Linear Equations",
+    "Ability to solve easy level problems accurately"
+  ],
+  "improvement_areas": [
+    "Differentiation (0% accuracy)",
+    "Integration (0% accuracy)",
+    "Trigonometric Ratios (0% accuracy)"
+  ],
+  "time_analysis": {
+    "total_time_spent": "1200 seconds",
+    "time_per_subject": {
+      "Mathematics": "1200 seconds"
+    },
+    "speed_analysis": {
+      "fastest_subject": "Mathematics",
+      "slowest_subject": "Mathematics",
+      "optimal_time_distribution": {
+        "Mathematics": "600 seconds"
+      }
+    },
+    "efficiency_insights": [
+      "Time spent per question is high, suggesting a need to improve efficiency and problem-solving speed."
+    ]
+  },
+  "personalized_recommendations": {
+    "immediate_actions": [
+      "Review the power rule of differentiation and basic integration formulas.",
+      "Practice 10-15 differentiation problems and 10-15 integration problems.",
+      "Review the unit circle and trigonometric ratios for common angles (30\u00b0, 45\u00b0, 60\u00b0, 90\u00b0)."
+    ],
+    "study_plan": {
+      "daily_schedule": {
+        "morning_session": {
+          "duration": "60 minutes",
+          "focus": "Differentiation",
+          "activities": [
+            "Review notes and formulas",
+            "Practice 10 easy problems"
+          ],
+          "target": "Understand the power rule of differentiation and apply it correctly in simple problems."
+        },
+        "afternoon_session": {
+          "duration": "60 minutes",
+          "focus": "Integration",
+          "activities": [
+            "Review notes and formulas",
+            "Practice 10 easy problems"
+          ],
+          "target": "Understand basic integration rules and apply them to simple problems."
+        },
+        "evening_session": {
+          "duration": "30 minutes",
+          "focus": "Revision and Quadratic Equations Practice",
+          "activities": [
+            "Review notes on quadratic equations",
+            "Solve 5 problems"
+          ],
+          "target": "Reinforce knowledge of factoring and solving quadratic equations."
+        }
+      },
+      "weekly_plan": {
+        "week_1": {
+          "primary_focus": "Differentiation and Integration",
+          "daily_topics": [
+            "Differentiation (Power Rule)",
+            "Integration (Basic Integrals)",
+            "Differentiation (Product/Quotient)",
+            "Integration (Substitution)",
+            "Mixed Differentiation",
+            "Mixed Integration",
+            "Review"
+          ],
+          "practice_questions": 15,
+          "revision_topics": [
+            "Power Rule",
+            "Basic Integrals"
+          ],
+          "target_improvement": "70% accuracy on differentiation and integration questions",
+          "success_metric": "Number of correctly solved problems"
+        },
+        "week_2": {
+          "primary_focus": "Quadratic Equations and Trigonometry",
+          "daily_topics": [
+            "Quadratic Formula",
+            "Factoring Quadratics",
+            "Trigonometric Identities",
+            "Trigonometric Ratios",
+            "Word Problems (Quadratics)",
+            "Word Problems (Trigonometry)",
+            "Mixed Problems"
+          ],
+          "practice_questions": 15,
+          "revision_topics": [
+            "Factoring",
+            "Unit Circle"
+          ],
+          "target_improvement": "80% accuracy on quadratic and trigonometric questions",
+          "success_metric": "Number of correctly solved problems"
+        },
+        "week_3": {
+          "primary_focus": "Mixed Practice",
+          "daily_topics": [
+            "Mixed problems from Algebra, Calculus, Trigonometry",
+            "Review of weak areas",
+            "Time-based practice",
+            "Mock Test",
+            "Mock Test Review",
+            "Time management strategies"
+          ],
+          "practice_questions": 20,
+          "revision_topics": [
+            "All topics"
+          ],
+          "target_improvement": "85% accuracy on a mixed problem set",
+          "success_metric": "Score on mixed practice and mock tests"
+        },
+        "week_4": {
+          "primary_focus": "Mock Tests and Final Revision",
+          "daily_topics": [
+            "Full-length mock test",
+            "Mock test review",
+            "Weak area review",
+            "Final formula review",
+            "Full-length mock test",
+            "Mock test review"
+          ],
+          "practice_questions": 25,
+          "revision_topics": [
+            "All topics"
+          ],
+          "target_improvement": "90% accuracy on full-length mock tests",
+          "success_metric": "Score and speed on full-length mock tests"
+        }
+      },
+      "resource_recommendations": [
+        {
+          "subject": "Mathematics",
+          "topic": "Differentiation and Integration",
+          "resource_type": "Book",
+          "specific_resource": "Chapter on Calculus from your textbook",
+          "why_recommended": "Your textbook provides a structured approach to Calculus",
+          "how_to_use": "Read the theory, solve examples and then practice exercises."
+        },
+        {
+          "subject": "Mathematics",
+          "topic": "Quadratic Equations",
+          "resource_type": "Practice Set",
+          "specific_resource": "Previous year JEE problems on Quadratic Equations",
+          "why_recommended": "Solving previous year questions gives insight into the exam pattern",
+          "how_to_use": "Solve the problems, review your answers and focus on the concepts where you made mistakes."
+        }
+      ]
+    },
+    "goal_setting": {
+      "short_term_goals": [
+        "Improve accuracy on differentiation to 70% this week",
+        "Increase integration accuracy to 70% in two weeks",
+        "Achieve 80% accuracy on quadratic equations in one month"
+      ],
+      "accuracy_targets": {
+        "current_weak_topics": "70%",
+        "overall_accuracy": "60%",
+        "subject_wise_targets": {
+          "Mathematics": "60%"
+        }
+      },
+      "time_management_goals": {
+        "average_time_per_question": "120 seconds",
+        "subject_time_allocation": {
+          "Mathematics": "50%"
+        }
+      }
+    }
+  },
+  "motivational_insights": {
+    "positive_highlights": [
+      "Mastery of linear equations demonstrates a solid understanding of basic algebraic concepts.",
+      "Consistent effort and targeted practice will significantly improve your performance."
+    ],
+    "progress_indicators": [
+      "Tracking your progress on practice problems will help you to stay motivated."
+    ],
+    "encouragement_message": "Your score shows areas for improvement, but don't be discouraged! With focused effort and a structured study plan, you can significantly improve your understanding and performance. Your consistent effort shows great promise. Let's work together to achieve your goals.",
+    "success_tips": [
+      "Break down complex problems into smaller, manageable steps.",
+      "Practice consistently, even if it's just for short periods.",
+      "Seek help from teachers or peers when you're struggling with concepts."
+    ]
+  },
+  "next_steps": {
+    "immediate_review": [
+      "Differentiation rules",
+      "Basic integration techniques"
+    ],
+    "practice_recommendations": [
+      "Solve problems from previous year JEE papers",
+      "Practice problems from your textbook"
+    ],
+    "retake_suggestions": "Retake a similar test after reviewing the topics to assess your progress.",
+    "resource_recommendations": [
+      "Your textbook",
+      "Previous year JEE question papers"
+    ]
+  },
+  "analysis_metadata": {
+    "generated_at": "2025-07-28T11:03:45.304297+00:00",
+    "user_id": "test_user_debug",
+    "test_id": "debug_test_001",
+    "ai_model": "gemini-2.5-flash",
+    "analysis_version": "1.0"
+  }
+}

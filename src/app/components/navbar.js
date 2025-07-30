@@ -27,15 +27,13 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <Link
           href="/"
-          className="flex items-center text-3xl font-extrabold font-serif text-primary-foreground tracking-tight hover:text-accent-foreground transition-all duration-300 hover:scale-105 transform"
+          className="flex items-center hover:opacity-90 transition-all duration-300 hover:scale-105 transform"
         >
-          <svg className="w-8 h-8 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 3.5C7.30558 3.5 3.5 7.30558 3.5 12C3.5 16.6944 7.30558 20.5 12 20.5C16.6944 20.5 20.5 16.6944 20.5 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            <path d="M20.5 7.5V4.5H17.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M15 12L12 15L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M12 15V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          Bodh.ai
+          <img 
+            src="/Bodh_Main_Full.png" 
+            alt="Bodh.ai Logo" 
+            className="h-10 w-auto object-contain"
+          />
         </Link>
 
         <nav className="hidden md:flex space-x-6 text-primary-foreground font-semibold">

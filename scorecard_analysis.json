@@ -1,0 +1,344 @@
+{
+  "overall_performance": {
+    "score_percentage": 20.0,
+    "performance_level": "Needs Improvement",
+    "rank_estimate": "Below average",
+    "summary": "The student scored 1 out of 5 questions, achieving a 20.0% score on a Physics test covering Mechanics. While demonstrating competence in applying the impulse-momentum theorem in one question, significant weaknesses were observed in understanding Newton's Laws and applying the impulse-momentum theorem in more complex scenarios."
+  },
+  "subject_analysis": {
+    "Physics": {
+      "accuracy_percentage": 20.0,
+      "total_questions": 5,
+      "correct_answers": 1,
+      "attempted_questions": 5,
+      "chapter_breakdown": [
+        {
+          "chapter": "Mechanics",
+          "accuracy": 20.0,
+          "questions_count": 5,
+          "topics_covered": [
+            "Impulse-momentum theorem",
+            "Newton's Laws"
+          ],
+          "performance": "Weak"
+        }
+      ],
+      "key_insights": [
+        "Significant conceptual gaps exist in understanding Newton's Laws, especially in applying them to inclined plane problems.",
+        "Application of the impulse-momentum theorem is inconsistent; the student struggles with problems requiring deeper understanding and calculation.",
+        "The student needs to focus on strengthening their understanding of fundamental concepts before tackling advanced problems."
+      ],
+      "improvement_areas": [
+        "Newton's Laws of Motion",
+        "Impulse-Momentum Theorem application in complex scenarios"
+      ],
+      "specific_recommendations": [
+        "Review fundamental concepts of forces, acceleration, and free-body diagrams.",
+        "Practice a variety of problems involving different applications of the impulse-momentum theorem, focusing on both conceptual understanding and problem-solving skills."
+      ]
+    }
+  },
+  "error_analysis": {
+    "total_errors": 4,
+    "error_patterns": [
+      {
+        "pattern_type": "Conceptual Error",
+        "frequency": 2,
+        "subjects_affected": [
+          "Physics"
+        ],
+        "description": "Misunderstanding of fundamental concepts related to Newton's Laws of motion, particularly force components and their application in inclined plane scenarios.",
+        "root_cause": "Lack of thorough understanding of Newton's laws and their applications.",
+        "fix_strategy": "Revisit the fundamental concepts. Solve a variety of problems focusing on force diagrams and applications to different situations"
+      },
+      {
+        "pattern_type": "Application Error",
+        "frequency": 1,
+        "subjects_affected": [
+          "Physics"
+        ],
+        "description": "Inconsistent application of the Impulse-Momentum theorem in problems related to braking scenarios.",
+        "root_cause": "Difficulty in applying the theorem correctly in realistic scenarios.",
+        "fix_strategy": "Focus on solving problems related to impulse, momentum and its conservation with varied real-world application."
+      },
+      {
+        "pattern_type": "Calculation Error",
+        "frequency": 1,
+        "subjects_affected": [
+          "Physics"
+        ],
+        "description": "Errors in calculations while applying the impulse-momentum theorem in elastic collision problems.",
+        "root_cause": "Lack of accuracy in applying the equations.",
+        "fix_strategy": "Practice problems with elastic and inelastic collisions. Focus on accurate calculations."
+      }
+    ],
+    "critical_mistakes": [
+      {
+        "question_number": 2,
+        "question_topic": "Newton's Laws",
+        "subject": "Physics",
+        "chapter": "Mechanics",
+        "mistake_type": "Conceptual Error",
+        "correct_approach": "Apply Newton's second law (F=ma) to find acceleration. Then use kinematic equations to find other parameters.",
+        "why_wrong": "The student likely failed to correctly apply F=ma to determine the acceleration.",
+        "practice_recommendation": "Practice problems involving F=ma, focusing on problems with multiple forces."
+      },
+      {
+        "question_number": 3,
+        "question_topic": "Impulse-momentum theorem",
+        "subject": "Physics",
+        "chapter": "Mechanics",
+        "mistake_type": "Calculation Error",
+        "correct_approach": "Apply conservation of momentum and kinetic energy for elastic collisions.",
+        "why_wrong": "Likely made calculation mistakes while applying equations of conservation of momentum and kinetic energy.",
+        "practice_recommendation": "Solve more elastic and inelastic collision problems. Pay close attention to units and sign conventions."
+      },
+      {
+        "question_number": 4,
+        "question_topic": "Newton's Laws",
+        "subject": "Physics",
+        "chapter": "Mechanics",
+        "mistake_type": "Conceptual Error",
+        "correct_approach": "Resolve forces into components parallel and perpendicular to the inclined plane. Apply Newton's second law to find acceleration.",
+        "why_wrong": "Failed to correctly resolve forces and apply Newton's second law along the inclined plane.",
+        "practice_recommendation": "Practice more problems involving inclined planes, focusing on resolving forces and applying Newton's second law."
+      },
+      {
+        "question_number": 5,
+        "question_topic": "Impulse-momentum theorem",
+        "subject": "Physics",
+        "chapter": "Mechanics",
+        "mistake_type": "Application Error",
+        "correct_approach": "Use the impulse-momentum theorem: Impulse = change in momentum.  Relate impulse to braking force and time.",
+        "why_wrong": "Failed to correctly apply the Impulse-Momentum theorem to a braking scenario.",
+        "practice_recommendation": "Solve problems involving impulse-momentum theorem in various braking scenarios."
+      }
+    ],
+    "improvement_priority": [
+      "Newton's Laws",
+      "Impulse-Momentum Theorem",
+      "Calculation Accuracy"
+    ]
+  },
+  "strengths_analysis": [
+    "The student demonstrated a basic understanding of the impulse-momentum theorem in Question 1."
+  ],
+  "improvement_areas": [
+    "Newton's Laws (20% accuracy)",
+    "Impulse-Momentum Theorem Application (60% accuracy)",
+    "Calculation Accuracy and Problem Solving Strategies"
+  ],
+  "time_analysis": {
+    "total_time_spent": "600 seconds",
+    "time_per_subject": {
+      "Physics": "600 seconds",
+      "Chemistry": "0 seconds",
+      "Mathematics": "0 seconds"
+    },
+    "speed_analysis": {
+      "fastest_subject": "Physics",
+      "slowest_subject": "Physics",
+      "optimal_time_distribution": {
+        "Physics": "300 seconds",
+        "Chemistry": "0 seconds",
+        "Mathematics": "0 seconds"
+      }
+    },
+    "efficiency_insights": [
+      "The student spent excessive time per question.  Improving efficiency is vital."
+    ]
+  },
+  "personalized_recommendations": {
+    "immediate_actions": [
+      "Review Newton's Laws of Motion, particularly free-body diagrams and force resolution.",
+      "Practice 5 problems involving F=ma and inclined planes.",
+      "Clarify any confusion regarding the impulse-momentum theorem."
+    ],
+    "study_plan": {
+      "daily_schedule": {
+        "morning_session": {
+          "duration": "60 minutes",
+          "focus": "Newton's Laws",
+          "activities": [
+            "Review concepts",
+            "Solve 10 practice problems"
+          ],
+          "target": "Improve understanding of force components and inclined plane problems."
+        },
+        "afternoon_session": {
+          "duration": "60 minutes",
+          "focus": "Impulse-Momentum Theorem",
+          "activities": [
+            "Review concepts",
+            "Solve 10 practice problems"
+          ],
+          "target": "Master the application of impulse-momentum in different scenarios."
+        },
+        "evening_session": {
+          "duration": "30 minutes",
+          "focus": "Revision & Practice",
+          "activities": [
+            "Review key concepts",
+            "Solve 5 mixed problems"
+          ],
+          "target": "Consolidate understanding and improve efficiency."
+        }
+      },
+      "weekly_plan": {
+        "week_1": {
+          "primary_focus": "Newton's Laws",
+          "daily_topics": [
+            "Forces",
+            "F=ma",
+            "Inclined Planes",
+            "Free Body Diagrams",
+            "Newton's 3rd Law",
+            "Practice Questions",
+            "Revision"
+          ],
+          "practice_questions": 10,
+          "revision_topics": [
+            "Forces",
+            "Free Body Diagrams"
+          ],
+          "target_improvement": "80% accuracy on Newton's Laws problems",
+          "success_metric": "Consistent performance on practice problems"
+        },
+        "week_2": {
+          "primary_focus": "Impulse-Momentum Theorem",
+          "daily_topics": [
+            "Impulse definition",
+            "Momentum definition",
+            "Impulse-Momentum Theorem applications",
+            "Elastic Collisions",
+            "Inelastic Collisions",
+            "Practice Questions",
+            "Revision"
+          ],
+          "practice_questions": 10,
+          "revision_topics": [
+            "Momentum",
+            "Impulse"
+          ],
+          "target_improvement": "80% accuracy on Impulse-Momentum problems",
+          "success_metric": "Successful problem-solving on various application types"
+        },
+        "week_3": {
+          "primary_focus": "Integrated Practice",
+          "daily_topics": [
+            "Mixed problems on Newton's Laws and Impulse-Momentum",
+            "Time Management",
+            "Error Analysis",
+            "Concept Clarification",
+            "Practice Questions",
+            "Revision"
+          ],
+          "practice_questions": 15,
+          "revision_topics": [
+            "Newton's Laws",
+            "Impulse-Momentum Theorem"
+          ],
+          "target_improvement": "70% overall accuracy",
+          "success_metric": "Improved speed and accuracy"
+        },
+        "week_4": {
+          "primary_focus": "Mock Tests & Final Revision",
+          "daily_topics": [
+            "Mock Test 1",
+            "Error Analysis",
+            "Mock Test 2",
+            "Error Analysis",
+            "Revision of weak areas",
+            "Practice Questions",
+            "Final Revision"
+          ],
+          "practice_questions": 20,
+          "revision_topics": [
+            "All Mechanics topics"
+          ],
+          "target_improvement": "90% overall accuracy",
+          "success_metric": "Consistent high scores in mock tests"
+        }
+      },
+      "resource_recommendations": [
+        {
+          "subject": "Physics",
+          "topic": "Newton's Laws",
+          "resource_type": "Book",
+          "specific_resource": "Resnick Halliday Walker - Chapters on Mechanics",
+          "why_recommended": "Comprehensive coverage of fundamental concepts.",
+          "how_to_use": "Focus on chapters related to forces, motion, and free-body diagrams."
+        },
+        {
+          "subject": "Physics",
+          "topic": "Impulse-Momentum Theorem",
+          "resource_type": "Practice Problems",
+          "specific_resource": "HC Verma - Problems related to collisions and impulse",
+          "why_recommended": "Provides a range of problems from basic to advanced levels.",
+          "how_to_use": "Solve problems systematically, focusing on both calculations and conceptual understanding."
+        }
+      ]
+    },
+    "goal_setting": {
+      "short_term_goals": [
+        "Improve accuracy on Newton's Laws problems to 80% within 1 week.",
+        "Increase understanding and problem solving in Impulse Momentum to 80% within 2 weeks.",
+        "Achieve 70% overall accuracy on Mechanics topics within 1 month."
+      ],
+      "accuracy_targets": {
+        "current_weak_topics": "80%",
+        "overall_accuracy": "70%",
+        "subject_wise_targets": {
+          "Physics": "70%",
+          "Chemistry": "0%",
+          "Mathematics": "0%"
+        }
+      },
+      "time_management_goals": {
+        "average_time_per_question": "60 seconds",
+        "subject_time_allocation": {
+          "Physics": "50%",
+          "Chemistry": "0%",
+          "Mathematics": "0%"
+        }
+      }
+    }
+  },
+  "motivational_insights": {
+    "positive_highlights": [
+      "You showed a good grasp of the impulse-momentum theorem in one question, indicating potential."
+    ],
+    "progress_indicators": [
+      "Track your accuracy and speed on practice problems to monitor improvement.",
+      "Celebrate small wins to stay motivated."
+    ],
+    "encouragement_message": "You've identified your weaknesses, which is a great first step. With focused effort and consistent practice, you can significantly improve your performance.",
+    "success_tips": [
+      "Break down complex problems into smaller steps.",
+      "Regularly review fundamental concepts.",
+      "Practice consistently and track your progress."
+    ]
+  },
+  "next_steps": {
+    "immediate_review": [
+      "Newton's Laws",
+      "Impulse-Momentum Theorem"
+    ],
+    "practice_recommendations": [
+      "Solve a wide variety of problems, focusing on concept application.",
+      "Use different resources (books, online materials) to reinforce understanding."
+    ],
+    "retake_suggestions": "Retake a similar test in a week to evaluate progress.",
+    "resource_recommendations": [
+      "HC Verma's Concepts of Physics",
+      "DC Pandey's Physics for JEE"
+    ]
+  },
+  "analysis_metadata": {
+    "generated_at": "2025-07-28T12:25:45.051796+00:00",
+    "user_id": "scorecard_test",
+    "test_id": "physics_test_001",
+    "ai_model": "gemini-2.5-flash",
+    "analysis_version": "1.0"
+  }
+}

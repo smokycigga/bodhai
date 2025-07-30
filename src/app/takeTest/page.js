@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import Sidebar from "../components/sidebar";
 import MathRenderer from "../components/MathRenderer";
+import GeminiAnalysisDashboard from './GeminiAnalysisDashboard';
+import TestAnalyticsSection from './TestAnalyticsSection';
 
 export default function TakeTest() {
   const [testData, setTestData] = useState(null);
@@ -12,7 +14,9 @@ export default function TakeTest() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [testCompleted, setTestCompleted] = useState(false);
   const [testResults, setTestResults] = useState(null);
+  const [geminiAnalysis, setGeminiAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [markedForReview, setMarkedForReview] = useState({});
   const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -63,12 +67,16 @@ export default function TakeTest() {
           incorrect_answers: results.incorrect_answers,
           unattempted_answers: results.total_questions - results.correct_answers - results.incorrect_answers,
           score: results.score,
-          max_score: results.total_questions * 4, // JEE scoring: +4 per correct
+          score_percentage: results.percentage, // Add this field
+          max_score: results.total_questions * 4,
           accuracy: results.percentage,
           subject_scores: results.subject_scores || {}
         };
         
         setTestResults(transformedResults);
+        
+        // Generate Gemini AI analysis
+        generateGeminiAnalysis(transformedResults, userId);
 
         try {
           const testResultData = {
@@ -190,6 +198,90 @@ export default function TakeTest() {
       ...prev,
       [questionIndex]: !prev[questionIndex]
     }));
+  };
+
+  const generateGeminiAnalysis = async (testResults, userId) => {
+    try {
+      setLoadingAnalysis(true);
+      
+      // Create detailed mistakes array from available data
+      const detailedMistakes = [];
+      
+      // Try to build mistakes from userAnswers if available
+      if (userAnswers && testData?.questions) {
+        testData.questions.forEach((question, index) => {
+          const userAnswer = userAnswers[index];
+          if (userAnswer && userAnswer !== question.correct_answer) {
+            detailedMistakes.push({
+              question_number: index + 1,
+              question_topic: question.topic || 'Unknown Topic',
+              subject: question.subject || 'Unknown Subject',
+              chapter: question.chapter || 'Unknown Chapter',
+              user_answer: userAnswer,
+              correct_answer: question.correct_answer,
+              mistake_type: 'Incorrect Answer'
+            });
+          }
+        });
+      }
+
+      const analysisData = {
+        user_id: userId,
+        test_results: testResults,
+        subject_performance: testResults.subject_scores || {},
+        test_questions: testData?.questions || [],
+        user_answers: userAnswers,
+        detailed_mistakes: detailedMistakes,
+        intelligence_insights: {
+          time_taken: (testData?.timeLimit * 60) - timeLeft,
+          time_per_question: ((testData?.timeLimit * 60) - timeLeft) / Math.max(testResults.total_questions, 1),
+          subjects_tested: Object.keys(testResults.subject_scores || {}),
+          difficulty_distribution: testData?.questions?.reduce((acc, q) => {
+            const diff = q.difficulty || 'medium';
+            acc[diff] = (acc[diff] || 0) + 1;
+            return acc;
+          }, {}) || {}
+        }
+      };
+
+      const response = await fetch('http://localhost:5000/api/gemini-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(analysisData),
+      });
+
+      if (response.ok) {
+        const analysisResult = await response.json();
+        if (analysisResult.analysis && typeof analysisResult.analysis === 'object') {
+          setGeminiAnalysis(analysisResult.analysis);
+        } else {
+          throw new Error('Invalid analysis structure received');
+        }
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Analysis generation failed: ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Error generating Gemini analysis:', error);
+      // Set fallback analysis
+      setGeminiAnalysis({
+        overall_performance: {
+          summary: 'Analysis temporarily unavailable due to technical issues.',
+          score_percentage: testResults.accuracy || 0,
+          performance_level: testResults.accuracy >= 80 ? 'Excellent' : testResults.accuracy >= 60 ? 'Good' : 'Needs Improvement',
+          total_questions: testResults.total_questions || 0,
+          correct_answers: testResults.correct_answers || 0,
+          incorrect_answers: testResults.incorrect_answers || 0,
+          unattempted_answers: testResults.unattempted_answers || 0
+        },
+        error_analysis: {
+          total_errors: testResults.incorrect_answers || 0,
+          critical_mistakes: []
+        }
+      });
+    } finally {
+      setLoadingAnalysis(false);
+    }
   };
 
   const getSubjectStats = () => {
@@ -319,23 +411,59 @@ export default function TakeTest() {
                 </div>
               </div>
 
-              {/* Subject-wise Performance */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {Object.entries(subjectStats).map(([subject, stats]) => (
-                  <div key={subject} className="bg-muted/30 rounded-xl p-6 text-center hover:bg-muted/50 transition-colors">
-                    <div className="w-12 h-12 bg-primary/10 rounded-xl mx-auto mb-4 flex items-center justify-center">
-                      <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                      </svg>
-                    </div>
-                    <div className="font-semibold text-foreground mb-2 text-lg">{subject}</div>
-                    <div className="text-3xl font-bold text-primary mb-2">
-                      {stats.correct}/{stats.total}
-                    </div>
-                    <div className="text-muted-foreground font-medium">{stats.percentage}% Accuracy</div>
-                  </div>
-                ))}
-              </div>
+      {/* Subject-wise Performance */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {Object.entries(subjectStats).map(([subject, stats]) => (
+          <div key={subject} className="bg-muted/30 rounded-xl p-6 text-center hover:bg-muted/50 transition-colors">
+            <div className="w-12 h-12 bg-primary/10 rounded-xl mx-auto mb-4 flex items-center justify-center">
+              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <div className="font-semibold text-foreground mb-2 text-lg">{subject}</div>
+            <div className="text-3xl font-bold text-primary mb-2">
+              {stats.correct}/{stats.total}
+            </div>
+            <div className="text-muted-foreground font-medium">{stats.percentage}% Accuracy</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Section Divider */}
+      <div className="text-center py-8">
+        <div className="w-24 h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50 rounded-full mx-auto mb-4"></div>
+        <h2 className="text-2xl font-bold text-foreground mb-2">Detailed Performance Analysis</h2>
+        <p className="text-muted-foreground">Comprehensive insights into your test performance</p>
+      </div>
+
+      {/* Detailed Test Analytics Section */}
+      <TestAnalyticsSection
+        testResults={testResults}
+        testData={testData}
+        timeTaken={(testData.timeLimit * 60) - timeLeft}
+      />
+
+      {/* AI Analysis Section Divider */}
+      <div className="text-center py-8">
+        <div className="w-24 h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50 rounded-full mx-auto mb-4"></div>
+        <h2 className="text-2xl font-bold text-foreground mb-2">AI-Powered Analysis</h2>
+        <p className="text-muted-foreground">Advanced pattern recognition and personalized learning recommendations</p>
+      </div>
+
+      {/* Gemini AI Analysis Dashboard */}
+      {loadingAnalysis ? (
+        <div className="bg-card rounded-2xl shadow-sm p-8 border border-border">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-muted border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="text-primary font-medium">Generating AI-powered analysis...</div>
+            <div className="text-sm text-muted-foreground mt-2">This may take a few moments</div>
+          </div>
+        </div>
+      ) : (
+        <GeminiAnalysisDashboard
+          geminiAnalysis={geminiAnalysis}
+        />
+      )}
             </div>
 
             <div className="text-center space-x-4">
@@ -406,9 +534,13 @@ export default function TakeTest() {
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <div className="w-6 h-6 rounded overflow-hidden">
+                <img 
+                  src="/bodh-logo.svg" 
+                  alt="Bodh.ai Logo" 
+                  className="w-full h-full object-contain"
+                />
+              </div>
               <span className="text-xl font-bold text-white">BODH.AI</span>
             </div>
 

@@ -1,0 +1,613 @@
+{
+  "timestamp": "2025-07-28T19:07:33.653443",
+  "test_cases": [
+    {
+      "name": "Physics Weak Student",
+      "user_data": {
+        "user_id": "student_weak_physics",
+        "chapter_performance": {
+          "Physics_Mechanics": {
+            "subject": "Physics",
+            "correct": 0,
+            "total": 9,
+            "accuracy": 0.0
+          },
+          "Physics_Thermodynamics": {
+            "subject": "Physics",
+            "correct": 2,
+            "total": 11,
+            "accuracy": 18.181818181818183
+          },
+          "Physics_Optics": {
+            "subject": "Physics",
+            "correct": 0,
+            "total": 9,
+            "accuracy": 0.0
+          },
+          "Physics_Electromagnetism": {
+            "subject": "Physics",
+            "correct": 1,
+            "total": 10,
+            "accuracy": 10.0
+          },
+          "Chemistry_Organic": {
+            "subject": "Chemistry",
+            "correct": 4,
+            "total": 7,
+            "accuracy": 57.14285714285714
+          },
+          "Chemistry_Inorganic": {
+            "subject": "Chemistry",
+            "correct": 6,
+            "total": 10,
+            "accuracy": 60.0
+          },
+          "Chemistry_Physical": {
+            "subject": "Chemistry",
+            "correct": 3,
+            "total": 6,
+            "accuracy": 50.0
+          },
+          "Chemistry_Analytical": {
+            "subject": "Chemistry",
+            "correct": 4,
+            "total": 7,
+            "accuracy": 57.14285714285714
+          },
+          "Mathematics_Calculus": {
+            "subject": "Mathematics",
+            "correct": 5,
+            "total": 10,
+            "accuracy": 50.0
+          },
+          "Mathematics_Algebra": {
+            "subject": "Mathematics",
+            "correct": 5,
+            "total": 9,
+            "accuracy": 55.55555555555556
+          },
+          "Mathematics_Geometry": {
+            "subject": "Mathematics",
+            "correct": 5,
+            "total": 9,
+            "accuracy": 55.55555555555556
+          },
+          "Mathematics_Statistics": {
+            "subject": "Mathematics",
+            "correct": 4,
+            "total": 6,
+            "accuracy": 66.66666666666666
+          }
+        },
+        "overall_accuracy": 45.0,
+        "weak_subjects": [
+          "Physics"
+        ]
+      },
+      "intelligence": {
+        "weak_topics": {
+          "Physics": [
+            {
+              "topic": "Physics_Mechanics",
+              "accuracy": 0.0,
+              "attempts": 9,
+              "priority": 0.93
+            },
+            {
+              "topic": "Physics_Optics",
+              "accuracy": 0.0,
+              "attempts": 9,
+              "priority": 0.93
+            },
+            {
+              "topic": "Physics_Electromagnetism",
+              "accuracy": 10.0,
+              "attempts": 10,
+              "priority": 0.91
+            },
+            {
+              "topic": "Physics_Thermodynamics",
+              "accuracy": 18.181818181818183,
+              "attempts": 11,
+              "priority": 0.869090909090909
+            }
+          ],
+          "Chemistry": [
+            {
+              "topic": "Chemistry_Inorganic",
+              "accuracy": 60.0,
+              "attempts": 10,
+              "priority": 0.66
+            },
+            {
+              "topic": "Chemistry_Physical",
+              "accuracy": 50.0,
+              "attempts": 6,
+              "priority": 0.5900000000000001
+            },
+            {
+              "topic": "Chemistry_Organic",
+              "accuracy": 57.14285714285714,
+              "attempts": 7,
+              "priority": 0.5842857142857143
+            },
+            {
+              "topic": "Chemistry_Analytical",
+              "accuracy": 57.14285714285714,
+              "attempts": 7,
+              "priority": 0.5842857142857143
+            }
+          ],
+          "Mathematics": [
+            {
+              "topic": "Mathematics_Calculus",
+              "accuracy": 50.0,
+              "attempts": 10,
+              "priority": 0.7100000000000001
+            },
+            {
+              "topic": "Mathematics_Algebra",
+              "accuracy": 55.55555555555556,
+              "attempts": 9,
+              "priority": 0.6522222222222223
+            },
+            {
+              "topic": "Mathematics_Geometry",
+              "accuracy": 55.55555555555556,
+              "attempts": 9,
+              "priority": 0.6522222222222223
+            }
+          ]
+        },
+        "mistake_patterns": {
+          "Physics": [
+            {
+              "topic": "Physics_Mechanics",
+              "error_rate": 100.0,
+              "attempts": 9
+            },
+            {
+              "topic": "Physics_Optics",
+              "error_rate": 100.0,
+              "attempts": 9
+            },
+            {
+              "topic": "Physics_Electromagnetism",
+              "error_rate": 90.0,
+              "attempts": 10
+            },
+            {
+              "topic": "Physics_Thermodynamics",
+              "error_rate": 81.81818181818181,
+              "attempts": 11
+            }
+          ],
+          "Chemistry": [],
+          "Mathematics": []
+        },
+        "total_weak_topics": 11,
+        "total_mistake_patterns": 4
+      },
+      "selection": {
+        "total_questions": 30,
+        "breakdown": {
+          "weak_topics": 20,
+          "mistake_patterns": 6,
+          "general_coverage": 4
+        },
+        "analysis": {
+          "subject_distribution": {
+            "Physics": 16,
+            "Chemistry": 9,
+            "Mathematics": 5
+          },
+          "selection_reason_distribution": {
+            "weak_topic_Physics_Mechanics": 4,
+            "weak_topic_Physics_Optics": 4,
+            "weak_topic_Chemistry_Inorganic": 4,
+            "weak_topic_Chemistry_Physical": 4,
+            "weak_topic_Mathematics_Calculus": 4,
+            "mistake_pattern_Physics_Mechanics": 3,
+            "mistake_pattern_Physics_Optics": 3,
+            "general_coverage": 4
+          },
+          "adaptiveness_metrics": {
+            "weak_topic_focus_percentage": 66.66666666666666,
+            "mistake_pattern_focus_percentage": 20.0,
+            "overall_adaptiveness_score": 86.66666666666667
+          },
+          "uniqueness_maintained": true
+        }
+      }
+    },
+    {
+      "name": "Chemistry+Math Weak Student",
+      "user_data": {
+        "user_id": "student_weak_chem_math",
+        "chapter_performance": {
+          "Physics_Mechanics": {
+            "subject": "Physics",
+            "correct": 1,
+            "total": 5,
+            "accuracy": 20.0
+          },
+          "Physics_Thermodynamics": {
+            "subject": "Physics",
+            "correct": 3,
+            "total": 7,
+            "accuracy": 42.857142857142854
+          },
+          "Physics_Optics": {
+            "subject": "Physics",
+            "correct": 2,
+            "total": 5,
+            "accuracy": 40.0
+          },
+          "Physics_Electromagnetism": {
+            "subject": "Physics",
+            "correct": 3,
+            "total": 7,
+            "accuracy": 42.857142857142854
+          },
+          "Chemistry_Organic": {
+            "subject": "Chemistry",
+            "correct": 0,
+            "total": 9,
+            "accuracy": 0.0
+          },
+          "Chemistry_Inorganic": {
+            "subject": "Chemistry",
+            "correct": 1,
+            "total": 11,
+            "accuracy": 9.090909090909092
+          },
+          "Chemistry_Physical": {
+            "subject": "Chemistry",
+            "correct": 2,
+            "total": 13,
+            "accuracy": 15.384615384615385
+          },
+          "Chemistry_Analytical": {
+            "subject": "Chemistry",
+            "correct": 1,
+            "total": 12,
+            "accuracy": 8.333333333333332
+          },
+          "Mathematics_Calculus": {
+            "subject": "Mathematics",
+            "correct": 2,
+            "total": 14,
+            "accuracy": 14.285714285714285
+          },
+          "Mathematics_Algebra": {
+            "subject": "Mathematics",
+            "correct": 1,
+            "total": 8,
+            "accuracy": 12.5
+          },
+          "Mathematics_Geometry": {
+            "subject": "Mathematics",
+            "correct": 1,
+            "total": 10,
+            "accuracy": 10.0
+          },
+          "Mathematics_Statistics": {
+            "subject": "Mathematics",
+            "correct": 2,
+            "total": 14,
+            "accuracy": 14.285714285714285
+          }
+        },
+        "overall_accuracy": 35.0,
+        "weak_subjects": [
+          "Chemistry",
+          "Mathematics"
+        ]
+      },
+      "intelligence": {
+        "weak_topics": {
+          "Physics": [
+            {
+              "topic": "Physics_Mechanics",
+              "accuracy": 20.0,
+              "attempts": 5,
+              "priority": 0.7100000000000001
+            },
+            {
+              "topic": "Physics_Thermodynamics",
+              "accuracy": 42.857142857142854,
+              "attempts": 7,
+              "priority": 0.6557142857142858
+            },
+            {
+              "topic": "Physics_Electromagnetism",
+              "accuracy": 42.857142857142854,
+              "attempts": 7,
+              "priority": 0.6557142857142858
+            },
+            {
+              "topic": "Physics_Optics",
+              "accuracy": 40.0,
+              "attempts": 5,
+              "priority": 0.61
+            }
+          ],
+          "Chemistry": [
+            {
+              "topic": "Chemistry_Organic",
+              "accuracy": 0.0,
+              "attempts": 9,
+              "priority": 0.93
+            },
+            {
+              "topic": "Chemistry_Analytical",
+              "accuracy": 8.333333333333332,
+              "attempts": 12,
+              "priority": 0.9183333333333333
+            },
+            {
+              "topic": "Chemistry_Inorganic",
+              "accuracy": 9.090909090909092,
+              "attempts": 11,
+              "priority": 0.9145454545454546
+            },
+            {
+              "topic": "Chemistry_Physical",
+              "accuracy": 15.384615384615385,
+              "attempts": 13,
+              "priority": 0.8830769230769231
+            }
+          ],
+          "Mathematics": [
+            {
+              "topic": "Mathematics_Geometry",
+              "accuracy": 10.0,
+              "attempts": 10,
+              "priority": 0.91
+            },
+            {
+              "topic": "Mathematics_Calculus",
+              "accuracy": 14.285714285714285,
+              "attempts": 14,
+              "priority": 0.8885714285714287
+            },
+            {
+              "topic": "Mathematics_Statistics",
+              "accuracy": 14.285714285714285,
+              "attempts": 14,
+              "priority": 0.8885714285714287
+            },
+            {
+              "topic": "Mathematics_Algebra",
+              "accuracy": 12.5,
+              "attempts": 8,
+              "priority": 0.8375
+            }
+          ]
+        },
+        "mistake_patterns": {
+          "Physics": [
+            {
+              "topic": "Physics_Mechanics",
+              "error_rate": 80.0,
+              "attempts": 5
+            },
+            {
+              "topic": "Physics_Optics",
+              "error_rate": 60.0,
+              "attempts": 5
+            },
+            {
+              "topic": "Physics_Thermodynamics",
+              "error_rate": 57.142857142857146,
+              "attempts": 7
+            },
+            {
+              "topic": "Physics_Electromagnetism",
+              "error_rate": 57.142857142857146,
+              "attempts": 7
+            }
+          ],
+          "Chemistry": [
+            {
+              "topic": "Chemistry_Organic",
+              "error_rate": 100.0,
+              "attempts": 9
+            },
+            {
+              "topic": "Chemistry_Analytical",
+              "error_rate": 91.66666666666667,
+              "attempts": 12
+            },
+            {
+              "topic": "Chemistry_Inorganic",
+              "error_rate": 90.9090909090909,
+              "attempts": 11
+            },
+            {
+              "topic": "Chemistry_Physical",
+              "error_rate": 84.61538461538461,
+              "attempts": 13
+            }
+          ],
+          "Mathematics": [
+            {
+              "topic": "Mathematics_Geometry",
+              "error_rate": 90.0,
+              "attempts": 10
+            },
+            {
+              "topic": "Mathematics_Algebra",
+              "error_rate": 87.5,
+              "attempts": 8
+            },
+            {
+              "topic": "Mathematics_Calculus",
+              "error_rate": 85.71428571428572,
+              "attempts": 14
+            },
+            {
+              "topic": "Mathematics_Statistics",
+              "error_rate": 85.71428571428572,
+              "attempts": 14
+            }
+          ]
+        },
+        "total_weak_topics": 12,
+        "total_mistake_patterns": 12
+      },
+      "selection": {
+        "total_questions": 30,
+        "breakdown": {
+          "weak_topics": 20,
+          "mistake_patterns": 9,
+          "general_coverage": 1
+        },
+        "analysis": {
+          "subject_distribution": {
+            "Physics": 15,
+            "Chemistry": 11,
+            "Mathematics": 4
+          },
+          "selection_reason_distribution": {
+            "weak_topic_Physics_Mechanics": 4,
+            "weak_topic_Physics_Thermodynamics": 4,
+            "weak_topic_Chemistry_Organic": 4,
+            "weak_topic_Chemistry_Analytical": 4,
+            "weak_topic_Mathematics_Geometry": 4,
+            "mistake_pattern_Physics_Mechanics": 3,
+            "mistake_pattern_Physics_Optics": 3,
+            "mistake_pattern_Chemistry_Organic": 3,
+            "general_coverage": 1
+          },
+          "adaptiveness_metrics": {
+            "weak_topic_focus_percentage": 66.66666666666666,
+            "mistake_pattern_focus_percentage": 30.0,
+            "overall_adaptiveness_score": 96.66666666666667
+          },
+          "uniqueness_maintained": true
+        }
+      }
+    },
+    {
+      "name": "Strong Student",
+      "user_data": {
+        "user_id": "strong_student",
+        "chapter_performance": {
+          "Physics_Mechanics": {
+            "subject": "Physics",
+            "correct": 5,
+            "total": 6,
+            "accuracy": 83.33333333333334
+          },
+          "Physics_Thermodynamics": {
+            "subject": "Physics",
+            "correct": 8,
+            "total": 9,
+            "accuracy": 88.88888888888889
+          },
+          "Physics_Optics": {
+            "subject": "Physics",
+            "correct": 5,
+            "total": 6,
+            "accuracy": 83.33333333333334
+          },
+          "Physics_Electromagnetism": {
+            "subject": "Physics",
+            "correct": 8,
+            "total": 9,
+            "accuracy": 88.88888888888889
+          },
+          "Chemistry_Organic": {
+            "subject": "Chemistry",
+            "correct": 9,
+            "total": 10,
+            "accuracy": 90.0
+          },
+          "Chemistry_Inorganic": {
+            "subject": "Chemistry",
+            "correct": 6,
+            "total": 7,
+            "accuracy": 85.71428571428571
+          },
+          "Chemistry_Physical": {
+            "subject": "Chemistry",
+            "correct": 7,
+            "total": 8,
+            "accuracy": 87.5
+          },
+          "Chemistry_Analytical": {
+            "subject": "Chemistry",
+            "correct": 8,
+            "total": 9,
+            "accuracy": 88.88888888888889
+          },
+          "Mathematics_Calculus": {
+            "subject": "Mathematics",
+            "correct": 6,
+            "total": 7,
+            "accuracy": 85.71428571428571
+          },
+          "Mathematics_Algebra": {
+            "subject": "Mathematics",
+            "correct": 5,
+            "total": 6,
+            "accuracy": 83.33333333333334
+          },
+          "Mathematics_Geometry": {
+            "subject": "Mathematics",
+            "correct": 7,
+            "total": 8,
+            "accuracy": 87.5
+          },
+          "Mathematics_Statistics": {
+            "subject": "Mathematics",
+            "correct": 6,
+            "total": 7,
+            "accuracy": 85.71428571428571
+          }
+        },
+        "overall_accuracy": 85.0,
+        "weak_subjects": []
+      },
+      "intelligence": {
+        "weak_topics": {
+          "Physics": [],
+          "Chemistry": [],
+          "Mathematics": []
+        },
+        "mistake_patterns": {
+          "Physics": [],
+          "Chemistry": [],
+          "Mathematics": []
+        },
+        "total_weak_topics": 0,
+        "total_mistake_patterns": 0
+      },
+      "selection": {
+        "total_questions": 17,
+        "breakdown": {
+          "weak_topics": 0,
+          "mistake_patterns": 0,
+          "general_coverage": 17
+        },
+        "analysis": {
+          "subject_distribution": {
+            "Physics": 15,
+            "Chemistry": 1,
+            "Mathematics": 1
+          },
+          "selection_reason_distribution": {
+            "general_coverage": 17
+          },
+          "adaptiveness_metrics": {
+            "weak_topic_focus_percentage": 0.0,
+            "mistake_pattern_focus_percentage": 0.0,
+            "overall_adaptiveness_score": 0.0
+          },
+          "uniqueness_maintained": true
+        }
+      }
+    }
+  ]
+}

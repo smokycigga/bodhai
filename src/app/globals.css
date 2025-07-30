@@ -315,3 +315,128 @@ span[dangerouslySetInnerHTML] {
 .katex .mop {
   display: inline !important;
 }
+
+/* ApexCharts Dark Mode Compatibility */
+.apexcharts-canvas {
+  background: transparent !important;
+}
+
+.apexcharts-text {
+  fill: hsl(var(--foreground)) !important;
+}
+
+.apexcharts-gridline {
+  stroke: hsl(var(--border)) !important;
+  stroke-opacity: 0.3 !important;
+}
+
+.apexcharts-xaxis-label,
+.apexcharts-yaxis-label {
+  fill: hsl(var(--foreground)) !important;
+}
+
+.apexcharts-tooltip {
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--card-foreground)) !important;
+}
+
+.apexcharts-tooltip-title {
+  background: hsl(var(--muted)) !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Chart spacing improvements */
+.apexcharts-bar-series .apexcharts-series {
+  transform-origin: center;
+}
+
+/* Ensure proper spacing between bars */
+.apexcharts-bar-area {
+  margin: 0 8px;
+}
+
+/* Better bar spacing and positioning */
+.apexcharts-series[seriesName="Questions"] .apexcharts-bar-area {
+  margin: 0 12px;
+}
+
+/* Dark mode specific chart adjustments */
+.dark .apexcharts-canvas {
+  filter: brightness(1.1);
+}
+
+.dark .apexcharts-datalabel {
+  fill: hsl(var(--foreground)) !important;
+}
+
+/* Test Analytics Section Enhancements */
+.analytics-card {
+  transition: all 0.3s ease;
+}
+
+.analytics-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.dark .analytics-card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Performance metric cards */
+.metric-card {
+  background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted)/0.3) 100%);
+  transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+  transform: scale(1.02);
+}
+
+/* Chart containers */
+.chart-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 49%, hsl(var(--border)/0.1) 50%, transparent 51%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Prevent label clipping */
+.apexcharts-xaxis-label {
+  dominant-baseline: hanging !important;
+  text-anchor: middle !important;
+}
+
+.apexcharts-canvas svg {
+  overflow: visible !important;
+}
+
+/* Ensure labels have enough space */
+.apexcharts-xaxis .apexcharts-xaxis-texts-g {
+  transform: translateY(10px) !important;
+}
+
+/* Prevent label overlap by ensuring proper spacing */
+.apexcharts-xaxis-label {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-anchor: middle !important;
+  dominant-baseline: hanging !important;
+}
+
+/* Add spacing between x-axis labels */
+.apexcharts-xaxis .apexcharts-xaxis-texts-g .apexcharts-text {
+  margin: 0 8px !important;
+}

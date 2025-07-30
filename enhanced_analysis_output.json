@@ -1,0 +1,349 @@
+{
+  "overall_performance": {
+    "score_percentage": 60.0,
+    "performance_level": "Needs Improvement",
+    "rank_estimate": "Below average",
+    "summary": "You scored 6/10 on this test covering Physics, Chemistry, and Mathematics. While you demonstrated strength in Physics and Mathematics, a significant conceptual gap in Chemistry, specifically Alkanes, needs immediate attention.  Improving your Chemistry understanding will greatly boost your overall score."
+  },
+  "subject_analysis": {
+    "Physics": {
+      "accuracy_percentage": 100.0,
+      "total_questions": 1,
+      "correct_answers": 1,
+      "attempted_questions": 1,
+      "chapter_breakdown": [
+        {
+          "chapter": "Mechanics",
+          "accuracy": 100.0,
+          "questions_count": 1,
+          "topics_covered": [
+            "Newton's Laws"
+          ],
+          "performance": "Strong"
+        }
+      ],
+      "key_insights": [
+        "Excellent understanding of Newton's Laws.",
+        "Ability to apply concepts effectively in problem-solving.",
+        "Strong foundation in Mechanics."
+      ],
+      "improvement_areas": [],
+      "specific_recommendations": [
+        "Continue practicing more complex problems on Newton's Laws.",
+        "Explore applications of Newton's Laws to different scenarios."
+      ]
+    },
+    "Chemistry": {
+      "accuracy_percentage": 0.0,
+      "total_questions": 1,
+      "correct_answers": 0,
+      "attempted_questions": 1,
+      "chapter_breakdown": [
+        {
+          "chapter": "Organic Chemistry",
+          "accuracy": 0.0,
+          "questions_count": 1,
+          "topics_covered": [
+            "Alkanes"
+          ],
+          "performance": "Weak"
+        }
+      ],
+      "key_insights": [
+        "Significant conceptual misunderstanding in Alkanes.",
+        "Difficulty in applying IUPAC nomenclature rules.",
+        "Requires focused review of basic organic chemistry principles."
+      ],
+      "improvement_areas": [
+        "IUPAC nomenclature of Alkanes",
+        "Isomerism in Alkanes"
+      ],
+      "specific_recommendations": [
+        "Revise the IUPAC nomenclature rules for alkanes thoroughly.",
+        "Practice naming and drawing structures of different alkanes and their isomers."
+      ]
+    },
+    "Mathematics": {
+      "accuracy_percentage": 100.0,
+      "total_questions": 1,
+      "correct_answers": 1,
+      "attempted_questions": 1,
+      "chapter_breakdown": [
+        {
+          "chapter": "Calculus",
+          "accuracy": 100.0,
+          "questions_count": 1,
+          "topics_covered": [
+            "Derivatives"
+          ],
+          "performance": "Strong"
+        }
+      ],
+      "key_insights": [
+        "Solid grasp of basic derivative calculations.",
+        "Proficient in applying the power rule.",
+        "Strong foundation in Calculus."
+      ],
+      "improvement_areas": [],
+      "specific_recommendations": [
+        "Practice more complex derivative problems involving different functions.",
+        "Explore applications of derivatives in various mathematical contexts."
+      ]
+    }
+  },
+  "error_analysis": {
+    "total_errors": 1,
+    "error_patterns": [
+      {
+        "pattern_type": "Conceptual Error",
+        "frequency": 1,
+        "subjects_affected": [
+          "Chemistry"
+        ],
+        "description": "Incorrect application of IUPAC nomenclature rules for alkanes.",
+        "root_cause": "Lack of understanding of fundamental concepts in naming organic compounds.",
+        "fix_strategy": "Focused review of IUPAC nomenclature rules, followed by extensive practice problems."
+      }
+    ],
+    "critical_mistakes": [
+      {
+        "question_number": 2,
+        "question_topic": "Alkanes",
+        "subject": "Chemistry",
+        "chapter": "Organic Chemistry",
+        "mistake_type": "Conceptual Error",
+        "correct_approach": "Identify the number of carbon atoms in the chain, then apply the IUPAC rules for naming alkanes. For CH3-CH2-CH3, it's a three-carbon chain, hence propane.",
+        "why_wrong": "The student likely misidentified the number of carbon atoms or incorrectly applied the nomenclature rules.",
+        "practice_recommendation": "Solve 50 practice problems on IUPAC nomenclature of alkanes from a standard JEE preparation book."
+      }
+    ],
+    "improvement_priority": [
+      "Alkanes (IUPAC nomenclature)",
+      "More complex derivative problems",
+      "Time management"
+    ]
+  },
+  "strengths_analysis": [
+    "Strong understanding of Newton's Laws in Physics",
+    "Proficient in basic derivative calculations in Mathematics",
+    "Consistent accuracy in attempted questions in Physics and Mathematics."
+  ],
+  "improvement_areas": [
+    "Alkanes (0% accuracy): Requires focused review and practice on IUPAC nomenclature.",
+    "Time management: Average time per question is high (180 seconds). Try to improve speed and efficiency.",
+    "Unattempted questions:  Ensure all questions are attempted, even if unsure, to maximise your score."
+  ],
+  "time_analysis": {
+    "total_time_spent": "1800 seconds",
+    "time_per_subject": {
+      "Physics": "180 seconds",
+      "Chemistry": "180 seconds",
+      "Mathematics": "180 seconds"
+    },
+    "speed_analysis": {
+      "fastest_subject": "Physics",
+      "slowest_subject": "Physics",
+      "optimal_time_distribution": {
+        "Physics": "300 seconds",
+        "Chemistry": "600 seconds",
+        "Mathematics": "900 seconds"
+      }
+    },
+    "efficiency_insights": [
+      "Time management needs improvement; allocate more time for challenging topics.",
+      "Practice under timed conditions to enhance speed and efficiency."
+    ]
+  },
+  "personalized_recommendations": {
+    "immediate_actions": [
+      "Review IUPAC nomenclature of alkanes today.",
+      "Solve 20 practice problems on alkanes.",
+      "Clarify any doubts on alkane nomenclature with your teacher or a reference book."
+    ],
+    "study_plan": {
+      "daily_schedule": {
+        "morning_session": {
+          "duration": "60 minutes",
+          "focus": "Organic Chemistry (Alkanes)",
+          "activities": [
+            "Review nomenclature rules",
+            "Solve practice problems"
+          ],
+          "target": "Improve understanding of IUPAC nomenclature for alkanes."
+        },
+        "afternoon_session": {
+          "duration": "90 minutes",
+          "focus": "Calculus (Derivatives)",
+          "activities": [
+            "Review complex derivative problems",
+            "Practice advanced problems"
+          ],
+          "target": "Increase proficiency in advanced derivative calculations."
+        },
+        "evening_session": {
+          "duration": "30 minutes",
+          "focus": "Revision/Practice",
+          "activities": [
+            "Review notes from the day",
+            "Solve mixed practice questions"
+          ],
+          "target": "Consolidate knowledge and identify areas requiring further review."
+        }
+      },
+      "weekly_plan": {
+        "week_1": {
+          "primary_focus": "Organic Chemistry (Alkanes)",
+          "daily_topics": [
+            "IUPAC nomenclature",
+            "Isomerism",
+            "Reactions",
+            "Reactions",
+            "Nomenclature",
+            "Isomerism",
+            "Revision"
+          ],
+          "practice_questions": 10,
+          "revision_topics": [
+            "Basic Organic Chemistry concepts"
+          ],
+          "target_improvement": "Achieve 80% accuracy on alkane-related problems.",
+          "success_metric": "Track the number of correctly solved problems."
+        },
+        "week_2": {
+          "primary_focus": "Calculus (Derivatives)",
+          "daily_topics": [
+            "Power Rule",
+            "Product Rule",
+            "Quotient Rule",
+            "Chain Rule",
+            "Higher-order Derivatives",
+            "Applications",
+            "Mixed Practice"
+          ],
+          "practice_questions": 15,
+          "revision_topics": [
+            "Limits and Continuity"
+          ],
+          "target_improvement": "Solve advanced derivative problems with 90% accuracy.",
+          "success_metric": "Monitor the number of problems solved correctly under timed conditions."
+        },
+        "week_3": {
+          "primary_focus": "Mixed Practice",
+          "daily_topics": [
+            "Alkanes",
+            "Derivatives",
+            "Newton's Laws",
+            "Mixed Problems",
+            "Mixed Problems",
+            "Mixed Problems",
+            "Revision"
+          ],
+          "practice_questions": 20,
+          "revision_topics": [
+            "Key concepts from all three subjects"
+          ],
+          "target_improvement": "Increase overall score by 10%.",
+          "success_metric": "Monitor performance on practice tests."
+        },
+        "week_4": {
+          "primary_focus": "Mock tests and Final Revision",
+          "daily_topics": [
+            "Mock test 1",
+            "Mock test 2",
+            "Revision",
+            "Revision",
+            "Revision",
+            "Revision",
+            "Full-length mock test"
+          ],
+          "practice_questions": 20,
+          "revision_topics": [
+            "All topics covered in the course"
+          ],
+          "target_improvement": "Achieve 70% in full-length mock test.",
+          "success_metric": "Analyze results and work on weak areas identified."
+        }
+      },
+      "resource_recommendations": [
+        {
+          "subject": "Chemistry",
+          "topic": "Alkanes",
+          "resource_type": "Book",
+          "specific_resource": "Chapter on Alkanes from a standard JEE Chemistry textbook like NCERT or a coaching institute material.",
+          "why_recommended": "Provides a structured approach to understanding alkanes.",
+          "how_to_use": "Read the chapter carefully and solve all the exercises at the end."
+        },
+        {
+          "subject": "Mathematics",
+          "topic": "Derivatives",
+          "resource_type": "Practice Questions",
+          "specific_resource": "Previous year JEE Advanced and Main papers.",
+          "why_recommended": "Provides high-quality questions for testing understanding.",
+          "how_to_use": "Solve these under timed conditions and analyze mistakes."
+        }
+      ]
+    },
+    "goal_setting": {
+      "short_term_goals": [
+        "Achieve 80% accuracy in Alkane nomenclature in one week.",
+        "Improve speed and accuracy in derivative calculations by 10% in two weeks.",
+        "Increase overall test score by 15% in one month."
+      ],
+      "accuracy_targets": {
+        "current_weak_topics": "80%",
+        "overall_accuracy": "75%",
+        "subject_wise_targets": {
+          "Physics": "90%",
+          "Chemistry": "80%",
+          "Mathematics": "95%"
+        }
+      },
+      "time_management_goals": {
+        "average_time_per_question": "120 seconds",
+        "subject_time_allocation": {
+          "Physics": "25%",
+          "Chemistry": "40%",
+          "Mathematics": "35%"
+        }
+      }
+    }
+  },
+  "motivational_insights": {
+    "positive_highlights": [
+      "Strong performance in Physics and Mathematics.",
+      "Ability to grasp new concepts, as evidenced by your performance in Mechanics and Derivatives."
+    ],
+    "progress_indicators": [
+      "Track your daily progress in solving practice problems.",
+      "Monitor your improvement on mock tests."
+    ],
+    "encouragement_message": "You have a solid foundation in Physics and Mathematics. With focused effort and consistent practice, you can easily improve your Chemistry score. Stay positive, keep practicing, and you will achieve great success!",
+    "success_tips": [
+      "Practice regularly and consistently.",
+      "Identify and address weak areas promptly.",
+      "Analyze your mistakes and learn from them."
+    ]
+  },
+  "next_steps": {
+    "immediate_review": [
+      "IUPAC nomenclature of alkanes",
+      "Complex derivative problems"
+    ],
+    "practice_recommendations": [
+      "Solve 50 problems on alkanes",
+      "Solve 30 problems on advanced derivatives"
+    ],
+    "retake_suggestions": "Retake a similar test after one week of focused study to assess improvement.",
+    "resource_recommendations": [
+      "JEE Chemistry textbook",
+      "JEE Mathematics practice problems"
+    ]
+  },
+  "analysis_metadata": {
+    "generated_at": "2025-07-28T11:30:49.017843+00:00",
+    "user_id": "test_user_123",
+    "test_id": "enhanced_test_001",
+    "ai_model": "gemini-2.5-flash",
+    "analysis_version": "1.0"
+  }
+}

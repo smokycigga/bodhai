@@ -1,0 +1,88 @@
+{
+  "timestamp": "2025-07-28T13:33:36.304388+00:00",
+  "tests": {
+    "imports": true,
+    "vector_db_init": true,
+    "question_processing": true,
+    "user_intelligence": true,
+    "adaptive_selection": true,
+    "gemini_analyzer": true
+  },
+  "overall_success": true,
+  "summary": {
+    "total_tests": 6,
+    "passed_tests": 6,
+    "success_rate": 100.0,
+    "agentic_capabilities": {
+      "capabilities": {
+        "vector_database": true,
+        "question_processing": true,
+        "user_intelligence": true,
+        "adaptive_selection": true,
+        "ai_analysis": true
+      },
+      "agentic_score": 100.0,
+      "agentic_level": "High - Fully Agentic System",
+      "is_agentic": true
+    },
+    "recommendations": [
+      "All core functions are working correctly!"
+    ]
+  },
+  "intelligence_analysis": {
+    "success": true,
+    "user_intelligence": {
+      "weak_topics": {
+        "Physics": [
+          {
+            "topic": "Physics_Kinematics",
+            "accuracy": 25.0,
+            "attempts": 8,
+            "priority": 0.775
+          }
+        ],
+        "Mathematics": [],
+        "Chemistry": [
+          {
+            "topic": "Chemistry_Organic",
+            "accuracy": 50.0,
+            "attempts": 6,
+            "priority": 0.5900000000000001
+          }
+        ]
+      },
+      "mistake_patterns": {
+        "Physics": [
+          {
+            "topic": "Physics_Kinematics",
+            "error_rate": 75.0,
+            "attempts": 8
+          }
+        ],
+        "Mathematics": [],
+        "Chemistry": []
+      },
+      "learning_trends": {},
+      "seen_questions": "set()"
+    },
+    "analysis": {
+      "total_weak_topics": 2,
+      "total_mistake_patterns": 1,
+      "subjects_with_weaknesses": [
+        "Physics",
+        "Mathematics",
+        "Chemistry"
+      ]
+    }
+  },
+  "selection_analysis": {
+    "success": true,
+    "selected_questions": 30,
+    "subject_distribution": {
+      "Physics": 20,
+      "Mathematics": 10
+    },
+    "weak_area_focus": 66.66666666666666,
+    "uniqueness_maintained": true
+  }
+}
