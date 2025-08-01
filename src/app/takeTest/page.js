@@ -6,6 +6,9 @@ import Sidebar from "../components/sidebar";
 import MathRenderer from "../components/MathRenderer";
 import GeminiAnalysisDashboard from './GeminiAnalysisDashboard';
 import TestAnalyticsSection from './TestAnalyticsSection';
+import QuestionRenderer from '../components/QuestionRenderer';
+import ExitTestModal from '../components/ExitTestModal';
+import { TestStateManager } from '../utils/testStateManager';
 
 export default function TakeTest() {
   const [testData, setTestData] = useState(null);
@@ -20,6 +23,7 @@ export default function TakeTest() {
   const [showWarning, setShowWarning] = useState(false);
   const [markedForReview, setMarkedForReview] = useState({});
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
   const { isLoaded, userId } = useAuth();
   const router = useRouter();
 
@@ -31,6 +35,25 @@ export default function TakeTest() {
       return;
     }
   }, [isLoaded, userId, router]);
+
+  // Debug: Log current question structure (safely placed after other useEffects)
+  useEffect(() => {
+    if (testData?.questions?.[currentQuestionIndex]) {
+      const currentQuestion = testData.questions[currentQuestionIndex];
+      console.log('🔍 Current Question Debug:', {
+        index: currentQuestionIndex,
+        hasContent: !!currentQuestion.content,
+        hasQuestion: !!currentQuestion.question,
+        contentType: typeof currentQuestion.content,
+        questionType: typeof currentQuestion.question,
+        optionsType: typeof currentQuestion.options,
+        optionsIsArray: Array.isArray(currentQuestion.options),
+        optionsLength: currentQuestion.options?.length,
+        subject: currentQuestion.subject,
+        sampleOption: currentQuestion.options?.[0]
+      });
+    }
+  }, [currentQuestionIndex, testData]);
 
   const handleSubmitTest = useCallback(async () => {
     if (!testData || !testData.questions || !userId) {
@@ -74,6 +97,16 @@ export default function TakeTest() {
         };
         
         setTestResults(transformedResults);
+        
+        // Mark test as completed and save results
+        if (testData.testId) {
+          TestStateManager.markTestCompleted(testData.testId);
+          TestStateManager.saveTestResults(testData.testId, {
+            ...transformedResults,
+            completedAt: new Date().toISOString(),
+            testData: testData
+          });
+        }
         
         // Generate Gemini AI analysis
         generateGeminiAnalysis(transformedResults, userId);
@@ -150,8 +183,28 @@ export default function TakeTest() {
             }
           }
 
-          setTestData(parsedTest);
-          setTimeLeft(parsedTest.timeLimit * 60);
+          // Check if this test is already completed
+          if (parsedTest.completed || (parsedTest.testId && TestStateManager.isTestCompleted(parsedTest.testId))) {
+            // Test already completed, show results
+            const savedResults = TestStateManager.getTestResults(parsedTest.testId);
+            if (savedResults) {
+              setTestData(parsedTest);
+              setTestCompleted(true);
+              setTestResults(savedResults);
+              // Load any saved analysis
+              const analysisData = localStorage.getItem(`geminiAnalysis_${parsedTest.testId}`);
+              if (analysisData) {
+                setGeminiAnalysis(JSON.parse(analysisData));
+              }
+            } else {
+              // No saved results, redirect back
+              router.push('/mockTests');
+            }
+          } else {
+            // Fresh test, start normally
+            setTestData(parsedTest);
+            setTimeLeft(parsedTest.timeLimit * 60);
+          }
         } else {
           router.push('/mockTests');
         }
@@ -179,6 +232,41 @@ export default function TakeTest() {
     }
   }, [timeLeft, testCompleted, testData, handleSubmitTest]);
 
+  // Handle browser back button and exit confirmation
+  useEffect(() => {
+    if (!testCompleted && testData) {
+      const handleBeforeUnload = (e) => {
+        e.preventDefault();
+        e.returnValue = '';
+      };
+
+      const handlePopState = (e) => {
+        e.preventDefault();
+        setShowExitModal(true);
+        // Push the current state back to prevent navigation
+        window.history.pushState(null, '', window.location.pathname);
+      };
+
+      // Add event listeners
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      window.addEventListener('popstate', handlePopState);
+      
+      // Push initial state to handle back button
+      window.history.pushState(null, '', window.location.pathname);
+
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, [testCompleted, testData]);
+
+  // Handle exit confirmation
+  const handleExitTest = () => {
+    localStorage.removeItem('currentTest');
+    router.push('/mockTests');
+  };
+
   const formatTime = (seconds) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -200,7 +288,9 @@ export default function TakeTest() {
     }));
   };
 
-  const generateGeminiAnalysis = async (testResults, userId) => {
+  const generateGeminiAnalysis = async (testResults, userId, retryCount = 0) => {
+    const maxRetries = 2;
+    
     try {
       setLoadingAnalysis(true);
       
@@ -252,33 +342,218 @@ export default function TakeTest() {
 
       if (response.ok) {
         const analysisResult = await response.json();
-        if (analysisResult.analysis && typeof analysisResult.analysis === 'object') {
-          setGeminiAnalysis(analysisResult.analysis);
+        if (analysisResult.success && analysisResult.analysis && typeof analysisResult.analysis === 'object') {
+          // Check if this is a fallback analysis
+          const isAIGenerated = analysisResult.analysis.analysis_metadata?.ai_model !== 'fallback-comprehensive';
+          
+          const analysisData = {
+            ...analysisResult.analysis,
+            _isAIGenerated: isAIGenerated,
+            _retryAttempt: retryCount
+          };
+          
+          setGeminiAnalysis(analysisData);
+          
+          // Save analysis to localStorage for later retrieval
+          if (testData?.testId) {
+            localStorage.setItem(`geminiAnalysis_${testData.testId}`, JSON.stringify(analysisData));
+          }
+          
+          // If it's a fallback and we haven't exceeded retries, try again after a delay
+          if (!isAIGenerated && retryCount < maxRetries) {
+            setTimeout(() => {
+              console.log(`Retrying Gemini analysis (attempt ${retryCount + 1}/${maxRetries})`);
+              generateGeminiAnalysis(testResults, userId, retryCount + 1);
+            }, 5000); // Retry after 5 seconds
+          }
         } else {
           throw new Error('Invalid analysis structure received');
         }
       } else {
         const errorText = await response.text();
+        
+        // If it's a server error and we haven't exceeded retries, try again
+        if (response.status >= 500 && retryCount < maxRetries) {
+          console.log(`Server error, retrying in 3 seconds (attempt ${retryCount + 1}/${maxRetries})`);
+          setTimeout(() => {
+            generateGeminiAnalysis(testResults, userId, retryCount + 1);
+          }, 3000);
+          return;
+        }
+        
         throw new Error(`Analysis generation failed: ${errorText}`);
       }
     } catch (error) {
       console.error('Error generating Gemini analysis:', error);
-      // Set fallback analysis
-      setGeminiAnalysis({
+      
+      // Create comprehensive fallback analysis
+      const fallbackAnalysis = {
         overall_performance: {
-          summary: 'Analysis temporarily unavailable due to technical issues.',
+          summary: `You scored ${testResults.correct_answers}/${testResults.total_questions} (${testResults.accuracy}%) in this test. Our AI analysis system is currently processing your detailed insights and will be available shortly.`,
           score_percentage: testResults.accuracy || 0,
           performance_level: testResults.accuracy >= 80 ? 'Excellent' : testResults.accuracy >= 60 ? 'Good' : 'Needs Improvement',
           total_questions: testResults.total_questions || 0,
           correct_answers: testResults.correct_answers || 0,
           incorrect_answers: testResults.incorrect_answers || 0,
-          unattempted_answers: testResults.unattempted_answers || 0
+          unattempted_answers: testResults.unattempted_answers || 0,
+          rank_estimate: "Analysis in progress"
         },
+        subject_analysis: {},
         error_analysis: {
           total_errors: testResults.incorrect_answers || 0,
-          critical_mistakes: []
+          error_patterns: [{
+            pattern_type: "Analysis in Progress",
+            frequency: testResults.incorrect_answers || 0,
+            description: "Detailed error pattern analysis is being generated by our AI system",
+            fix_strategy: "Comprehensive recommendations will be available shortly"
+          }],
+          critical_mistakes: detailedMistakes.slice(0, 5).map((mistake, index) => ({
+            question_number: mistake.question_number,
+            question_topic: mistake.question_topic,
+            subject: mistake.subject,
+            chapter: mistake.chapter,
+            mistake_type: mistake.mistake_type,
+            correct_approach: "Detailed solution approach will be provided",
+            why_wrong: "AI analysis in progress",
+            practice_recommendation: `Practice more problems on ${mistake.question_topic}`
+          })),
+          improvement_priority: ["Conceptual understanding", "Problem-solving accuracy", "Time management"]
+        },
+        strengths_analysis: [
+          `Successfully completed ${testResults.total_questions} questions`,
+          `Achieved ${testResults.accuracy}% accuracy`,
+          "Consistent performance across the test"
+        ],
+        improvement_areas: [
+          "Review incorrect answers for targeted improvement",
+          "Focus on weak subject areas",
+          "Practice time management strategies"
+        ],
+        time_analysis: {
+          total_time_spent: `${(testData?.timeLimit * 60) - timeLeft} seconds`,
+          average_time_per_question: `${(((testData?.timeLimit * 60) - timeLeft) / Math.max(testResults.total_questions, 1)).toFixed(1)} seconds`,
+          efficiency_insights: [
+            "Time management analysis in progress",
+            "Detailed timing insights will be available shortly",
+            "Focus on maintaining steady pace across all questions"
+          ]
+        },
+        personalized_recommendations: {
+          immediate_actions: [
+            "Review all incorrect answers carefully",
+            "Identify common mistake patterns",
+            "Practice similar question types"
+          ],
+          study_plan: {
+            daily_schedule: {
+              morning_session: {
+                duration: "60 minutes",
+                focus: "Concept revision",
+                activities: ["Review theory", "Solve practice problems"],
+                target: "Strengthen weak areas"
+              },
+              afternoon_session: {
+                duration: "90 minutes", 
+                focus: "Problem solving",
+                activities: ["Timed practice", "Mock tests"],
+                target: "Improve speed and accuracy"
+              },
+              evening_session: {
+                duration: "45 minutes",
+                focus: "Review and analysis", 
+                activities: ["Analyze mistakes", "Plan next day"],
+                target: "Continuous improvement"
+              }
+            }
+          }
+        },
+        motivational_insights: {
+          positive_highlights: [
+            `Successfully completed a ${testResults.total_questions}-question test`,
+            `Achieved ${testResults.accuracy}% accuracy`
+          ],
+          progress_indicators: [
+            "Consistent performance across subjects",
+            "Good test-taking endurance"
+          ],
+          encouragement_message: `Your ${testResults.accuracy}% score shows solid preparation. Our AI system is analyzing your performance patterns to provide personalized recommendations. Keep practicing consistently!`,
+          success_tips: [
+            "Review mistakes immediately after each test",
+            "Practice regularly with timed sessions", 
+            "Focus on understanding concepts, not just memorizing"
+          ]
+        },
+        next_steps: {
+          immediate_review: [{
+            topic: "Incorrect answers analysis",
+            subject: "All subjects",
+            priority: "High",
+            estimated_time: "30 minutes",
+            resources: ["Test solutions", "Concept notes"]
+          }],
+          practice_recommendations: [{
+            type: "Topic-wise practice",
+            focus: "Weak areas identified",
+            difficulty: "Medium", 
+            duration: "45 minutes daily",
+            frequency: "Daily",
+            success_metric: "Improved accuracy in similar questions"
+          }]
+        },
+        analysis_metadata: {
+          generated_at: new Date().toISOString(),
+          ai_model: 'fallback-comprehensive',
+          analysis_version: '2.0',
+          note: "This is a comprehensive fallback analysis. Detailed AI-powered insights will be available once our system processes your test data."
         }
-      });
+      };
+
+      // Generate subject analysis from test data
+      if (testData?.questions) {
+        const subjects = {};
+        testData.questions.forEach((question, index) => {
+          const subject = question.subject || 'Unknown';
+          if (!subjects[subject]) {
+            subjects[subject] = { total: 0, correct: 0 };
+          }
+          subjects[subject].total++;
+          
+          const userAnswer = userAnswers[index];
+          if (userAnswer && userAnswer.toUpperCase() === question.correct_answer?.toUpperCase()) {
+            subjects[subject].correct++;
+          }
+        });
+
+        Object.entries(subjects).forEach(([subject, data]) => {
+          const accuracy = (data.correct / data.total * 100);
+          fallbackAnalysis.subject_analysis[subject] = {
+            accuracy_percentage: accuracy,
+            total_questions: data.total,
+            correct_answers: data.correct,
+            attempted_questions: data.total,
+            key_insights: [
+              `Scored ${data.correct}/${data.total} in ${subject}`,
+              `Accuracy: ${accuracy.toFixed(1)}%`,
+              "Detailed analysis will be available shortly"
+            ],
+            improvement_areas: [
+              "Review fundamental concepts",
+              "Practice more problems"
+            ],
+            specific_recommendations: [
+              `Focus on ${subject} problem-solving techniques`,
+              "Strengthen conceptual understanding"
+            ]
+          };
+        });
+      }
+
+      setGeminiAnalysis(fallbackAnalysis);
+      
+      // Save fallback analysis to localStorage
+      if (testData?.testId) {
+        localStorage.setItem(`geminiAnalysis_${testData.testId}`, JSON.stringify(fallbackAnalysis));
+      }
     } finally {
       setLoadingAnalysis(false);
     }
@@ -492,9 +767,11 @@ export default function TakeTest() {
 
   // MathRenderer is now imported from components
 
-  // Get subject-wise question counts
+  // Get subject-wise question counts with proper ordering
   const getSubjectCounts = () => {
     const subjects = {};
+    const subjectOrder = ['Physics', 'Chemistry', 'Mathematics', 'Biology']; // Define preferred order
+    
     testData.questions.forEach((q, index) => {
       const subject = q.subject || 'Unknown';
       if (!subjects[subject]) {
@@ -506,7 +783,23 @@ export default function TakeTest() {
         subjects[subject].answered++;
       }
     });
-    return subjects;
+    
+    // Sort subjects according to preferred order
+    const orderedSubjects = {};
+    subjectOrder.forEach(subject => {
+      if (subjects[subject]) {
+        orderedSubjects[subject] = subjects[subject];
+      }
+    });
+    
+    // Add any remaining subjects that weren't in the preferred order
+    Object.keys(subjects).forEach(subject => {
+      if (!orderedSubjects[subject]) {
+        orderedSubjects[subject] = subjects[subject];
+      }
+    });
+    
+    return orderedSubjects;
   };
 
   const subjectCounts = getSubjectCounts();
@@ -533,15 +826,25 @@ export default function TakeTest() {
       <div className="bg-slate-800 border-b border-slate-700 px-6 py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded overflow-hidden">
+            <div className="flex items-center gap-3">
+              {/* Back button */}
+              <button
+                onClick={() => setShowExitModal(true)}
+                className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+              </button>
+              
+              <div className="h-8 w-auto">
                 <img 
-                  src="/bodh-logo.svg" 
+                  src="/Bodh_Main_Full.png" 
                   alt="Bodh.ai Logo" 
-                  className="w-full h-full object-contain"
+                  className="h-full w-auto object-contain"
                 />
               </div>
-              <span className="text-xl font-bold text-white">BODH.AI</span>
             </div>
 
             {/* Subject Tabs */}
@@ -596,58 +899,14 @@ export default function TakeTest() {
             </div>
           </div>
 
-          {/* Question Content */}
-          <div className="bg-slate-800 rounded-xl p-6 mb-6">
-            <div className="text-lg text-slate-100 mb-6 leading-relaxed">
-              <MathRenderer text={currentQuestion.question} />
-            </div>
-
-            {currentQuestion.image_data && (
-              <div className="mb-6 bg-slate-700 rounded-lg p-4">
-                <img
-                  src={currentQuestion.image_data}
-                  alt="Question diagram"
-                  className="max-w-full h-auto rounded-lg mx-auto"
-                />
-              </div>
-            )}
-
-            {/* Options Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              {currentQuestion.options.map((option, optionIndex) => {
-                const optionLabel = String.fromCharCode(65 + optionIndex);
-                const isSelected = userAnswers[currentQuestionIndex] === optionLabel;
-
-                return (
-                  <label
-                    key={optionIndex}
-                    className={`relative p-4 rounded-lg cursor-pointer transition-all border-2 ${isSelected
-                        ? "bg-green-600/20 border-green-500 text-white"
-                        : "bg-slate-700 border-slate-600 hover:border-slate-500 text-slate-200"
-                      }`}
-                  >
-                    <input
-                      type="radio"
-                      name={`question-${currentQuestionIndex}`}
-                      value={optionLabel}
-                      checked={isSelected}
-                      onChange={() => handleAnswerSelect(currentQuestionIndex, optionLabel)}
-                      className="sr-only"
-                    />
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${isSelected ? 'bg-green-500 text-white' : 'bg-slate-600 text-slate-300'
-                        }`}>
-                        {optionLabel}
-                      </div>
-                      <div className="flex-1 text-sm">
-                        <MathRenderer text={option} />
-                      </div>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
+          {/* Enhanced Question Renderer */}
+          <QuestionRenderer
+            question={currentQuestion}
+            questionIndex={currentQuestionIndex}
+            userAnswer={userAnswers[currentQuestionIndex]}
+            onAnswerChange={handleAnswerSelect}
+            isReviewMode={false}
+          />
 
           {/* Navigation Buttons */}
           <div className="flex justify-between items-center">
@@ -888,6 +1147,12 @@ export default function TakeTest() {
           </div>
         </div>
       )}
+      {/* Exit Test Modal */}
+      <ExitTestModal
+        isOpen={showExitModal}
+        onClose={() => setShowExitModal(false)}
+        onConfirmExit={handleExitTest}
+      />
     </div>
   );
 }

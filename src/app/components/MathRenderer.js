@@ -7,7 +7,34 @@ import { InlineMath } from 'react-katex';
  * MathRenderer that handles the specific LaTeX format from MongoDB
  */
 const MathRenderer = ({ text }) => {
+  // Handle null, undefined, or empty text
   if (!text) return null;
+
+  // Debug: Log problematic matrix content
+  if (text.includes('\\begin{matrix}')) {
+    console.log('Matrix content detected:', text);
+    console.log('Text length:', text.length);
+    console.log('Contains $:', text.includes('$'));
+  }
+
+  // Handle non-string inputs (objects, arrays, etc.)
+  if (typeof text !== 'string') {
+    console.warn('MathRenderer received non-string input:', text);
+    // Try to extract text from object if it has common text properties
+    if (typeof text === 'object') {
+      if (text.content) return <MathRenderer text={text.content} />;
+      if (text.text) return <MathRenderer text={text.text} />;
+      if (text.id) return <span>{text.id}</span>; // For option IDs
+      // If it's a plain object, try to stringify it safely
+      try {
+        return <span>{JSON.stringify(text)}</span>;
+      } catch {
+        return <span>[Invalid Content]</span>;
+      }
+    }
+    // Convert other types to string
+    return <span>{String(text)}</span>;
+  }
 
   try {
     // Step 1: Smart cleanup that preserves HTML but fixes LaTeX issues
@@ -20,20 +47,127 @@ const MathRenderer = ({ text }) => {
       .replace(/<br\s*\/?><br\s*\/?>/gi, ' ')  // Double <br> to space
       .replace(/\n<br\s*\/?>/gi, ' ')          // Newline + <br> to space
       .replace(/<br\s*\/?>(?=\s*\$)/gi, ' ')   // <br> before $ to space
+
+      // SUPER COMPREHENSIVE MATRIX FIXING - Multiple passes with different patterns
+      
+      // Pass 0: Handle SQUARE BRACKET patterns first (the actual issue!)
+      .replace(/\\left\[\s*\\begin\{matrix\}([\s\S]*?)\\end\{matrix\}\s*\\right\]/g, (match, content) => {
+        console.log('Pass 0 - Square bracket matrix (MAIN ISSUE):', match.substring(0, 100) + '...');
+        return `\\begin{bmatrix}${content.replace(/\\\\/g, ' \\\\ ').replace(/\s*&\s*/g, ' & ')}\\end{bmatrix}`;
+      })
+      
+      // Pass 1: Handle the most complex nested patterns first
+      .replace(/\\left\{\s*\{\s*\\begin\{matrix\}([\s\S]*?)\\end\{matrix\}\s*\}\s*\\right\]/g, (match, content) => {
+        console.log('Pass 1 - Complex nested matrix:', match.substring(0, 100) + '...');
+        return `\\begin{bmatrix}${content.replace(/\\\\/g, ' \\\\ ').replace(/\s*&\s*/g, ' & ')}\\end{bmatrix}`;
+      })
+      
+      // Pass 2: Handle patterns with single braces
+      .replace(/\\left\{\s*\\begin\{matrix\}([\s\S]*?)\\end\{matrix\}\s*\\right\]/g, (match, content) => {
+        console.log('Pass 2 - Single brace matrix:', match.substring(0, 100) + '...');
+        return `\\begin{bmatrix}${content.replace(/\\\\/g, ' \\\\ ').replace(/\s*&\s*/g, ' & ')}\\end{bmatrix}`;
+      })
+      
+      // Pass 3: Handle any remaining \begin{matrix} patterns
+      .replace(/\\begin\{matrix\}([\s\S]*?)\\end\{matrix\}/g, (match, content) => {
+        console.log('Pass 3 - Basic matrix:', match.substring(0, 100) + '...');
+        return `\\begin{pmatrix}${content.replace(/\\\\/g, ' \\\\ ').replace(/\s*&\s*/g, ' & ')}\\end{pmatrix}`;
+      })
+      
+      // Pass 4: Handle any leftover \left{ and \right] combinations
+      .replace(/\\left\{\s*([^{}]*(?:\{[^{}]*\}[^{}]*)*)\s*\\right\]/g, (match, content) => {
+        if (content.includes('&') || content.includes('\\\\')) {
+          console.log('Pass 4 - Leftover matrix pattern:', match.substring(0, 100) + '...');
+          return `\\begin{bmatrix}${content.replace(/\\\\/g, ' \\\\ ').replace(/\s*&\s*/g, ' & ')}\\end{bmatrix}`;
+        }
+        return match; // Don't change if it doesn't look like a matrix
+      })
+      
+      // Pass 5: Clean up any remaining matrix-like patterns
+      .replace(/\\left\{\s*/g, '\\begin{bmatrix}')
+      .replace(/\s*\\right\]/g, '\\end{bmatrix}')
+      
+      // Pass 6: Fix any double matrix declarations
+      .replace(/\\begin\{bmatrix\}\\begin\{bmatrix\}/g, '\\begin{bmatrix}')
+      .replace(/\\end\{bmatrix\}\\end\{bmatrix\}/g, '\\end{bmatrix}')
+
       // Fix common LaTeX issues from your MongoDB data
       .replace(/\\begin\{vmatrix\}/g, '\\begin{vmatrix}')
       .replace(/\\end\{vmatrix\}/g, '\\end{vmatrix}')
+      // Fix matrix syntax issues - comprehensive matrix handling
+      .replace(/\\left\{\s*\{\\begin\{matrix\}([\s\S]*?)\\end\{matrix\}\s*\}\s*\\right\]/g, (match, content) => {
+        console.log('Replacing complex matrix pattern:', match);
+        return `\\begin{bmatrix}${content.replace(/\\\\/g, ' \\\\ ').replace(/\s*&\s*/g, ' & ')}\\end{bmatrix}`;
+      })
+      .replace(/\\left\{\s*\\matrix\{([^}]+)\}\s*\\right\|/g, '\\begin{vmatrix}$1\\end{vmatrix}')
+      .replace(/\\left\|\s*\\matrix\{([^}]+)\}\s*\\right\|/g, '\\begin{vmatrix}$1\\end{vmatrix}')
+      .replace(/\\left\{\s*\\matrix\{/g, '\\begin{vmatrix}')
+      .replace(/\}\s*\\right\|/g, '\\end{vmatrix}')
+      .replace(/\\matrix\{/g, '\\begin{matrix}')
+      .replace(/\\cr/g, '\\\\')
+      // Fix nested braces in matrices
+      .replace(/\{\s*\{([^}]+)\}\s*\}/g, '{$1}')
+      // Fix matrix element separators
+      .replace(/\s*&\s*/g, ' & ')
+      .replace(/\\\\\s*\\\\/g, '\\\\')
       // Fix escaped braces that should be literal
       .replace(/\\\{([^}]*)\\\}/g, '\\{$1\\}')
       // Fix common LaTeX command issues
       .replace(/\\over\s+/g, '\\over ')
       .replace(/\\left\s*\\\{/g, '\\left\\{')
       .replace(/\\right\s*\\\}/g, '\\right\\}')
+      // Fix overline notation
+      .replace(/\\overline\s+([^}]+)/g, '\\overline{$1}')
       // Clean up excessive whitespace but preserve single spaces
       .replace(/\s{3,}/g, ' ')
       .trim();
 
-    // Step 2: Parse and render the content
+    // Step 2: Special handling for matrix content that might not be wrapped in $
+    if ((cleanText.includes('\\begin{matrix}') || cleanText.includes('\\begin{bmatrix}') || cleanText.includes('\\begin{pmatrix}')) && !cleanText.includes('$')) {
+      console.log('Forcing matrix content to be treated as math:', cleanText);
+      cleanText = `$${cleanText}$`;
+    }
+
+    // Step 2.5: NUCLEAR OPTION - String-based matrix fixing for stubborn cases
+    if (cleanText.includes('\\begin{matrix}') && (cleanText.includes('\\left{') || cleanText.includes('\\right]'))) {
+      console.log('NUCLEAR OPTION: Applying string-based matrix fixes');
+      
+      // Use string manipulation instead of regex for maximum reliability
+      let fixedText = cleanText;
+      
+      // Replace all variations of the problematic pattern (INCLUDING SQUARE BRACKETS!)
+      const patterns = [
+        // Square bracket patterns (THE MAIN ISSUE)
+        { from: '\\left[ \\begin{matrix}', to: '\\begin{bmatrix}' },
+        { from: '\\left[\\begin{matrix}', to: '\\begin{bmatrix}' },
+        { from: '\\end{matrix} \\right]', to: '\\end{bmatrix}' },
+        { from: '\\end{matrix}\\right]', to: '\\end{bmatrix}' },
+        
+        // Curly bracket patterns (backup)
+        { from: '\\left{ {\\begin{matrix}', to: '\\begin{bmatrix}' },
+        { from: '\\left{\\begin{matrix}', to: '\\begin{bmatrix}' },
+        { from: '\\left{ \\begin{matrix}', to: '\\begin{bmatrix}' },
+        { from: '\\end{matrix} } \\right]', to: '\\end{bmatrix}' },
+        { from: '\\end{matrix}} \\right]', to: '\\end{bmatrix}' }
+      ];
+      
+      patterns.forEach(pattern => {
+        while (fixedText.includes(pattern.from)) {
+          fixedText = fixedText.replace(pattern.from, pattern.to);
+          console.log(`Replaced: ${pattern.from} -> ${pattern.to}`);
+        }
+      });
+      
+      cleanText = fixedText;
+    }
+    
+    // Step 2.6: Force math treatment for any matrix content
+    if ((cleanText.includes('\\begin{matrix}') || cleanText.includes('\\begin{bmatrix}') || cleanText.includes('\\begin{pmatrix}')) && !cleanText.includes('$')) {
+      console.log('Forcing matrix content to be treated as math');
+      cleanText = `$${cleanText}$`;
+    }
+
+    // Step 3: Parse and render the content
     return renderMathContent(cleanText);
 
   } catch (error) {
@@ -64,6 +198,7 @@ const renderMathContent = (content) => {
           <span
             key={`text-${currentIndex}`}
             dangerouslySetInnerHTML={{ __html: textBefore }}
+            className="text-inherit"
           />
         );
       }
@@ -141,6 +276,7 @@ const renderMathContent = (content) => {
         <span
           key={`final-${currentIndex}`}
           dangerouslySetInnerHTML={{ __html: remainingText }}
+          className="text-inherit"
         />
       );
     }
@@ -148,14 +284,14 @@ const renderMathContent = (content) => {
 
   // If no math expressions found, render as HTML
   if (elements.length === 0) {
-    return <span dangerouslySetInnerHTML={{ __html: content }} />;
+    return <span dangerouslySetInnerHTML={{ __html: content }} className="text-inherit" />;
   }
 
   return (
     <span style={{
       display: 'inline',
       lineHeight: 'inherit'
-    }}>
+    }} className="text-inherit">
       {elements}
     </span>
   );
@@ -175,9 +311,24 @@ const cleanLatexContent = (content) => {
     .replace(/\\right\}/g, '\\right\\}')
     .replace(/\\left\|/g, '\\left|')
     .replace(/\\right\|/g, '\\right|')
-    // Fix matrix notation - convert vmatrix to simple vertical bars for better compatibility
-    .replace(/\\begin\{vmatrix\}/g, '|')
-    .replace(/\\end\{vmatrix\}/g, '|')
+    // Enhanced matrix handling - keep proper matrix syntax
+    .replace(/\\begin\{vmatrix\}/g, '\\begin{vmatrix}')
+    .replace(/\\end\{vmatrix\}/g, '\\end{vmatrix}')
+    .replace(/\\begin\{matrix\}/g, '\\begin{matrix}')
+    .replace(/\\end\{matrix\}/g, '\\end{matrix}')
+    .replace(/\\begin\{pmatrix\}/g, '\\begin{pmatrix}')
+    .replace(/\\end\{pmatrix\}/g, '\\end{pmatrix}')
+    .replace(/\\begin\{bmatrix\}/g, '\\begin{bmatrix}')
+    .replace(/\\end\{bmatrix\}/g, '\\end{bmatrix}')
+    // Fix matrix row separators
+    .replace(/\\cr/g, '\\\\')
+    .replace(/\\\\\s*\\\\/g, '\\\\')
+    // Fix matrix delimiters that might be malformed
+    .replace(/\\left\s*\\\{/g, '\\left\\{')
+    .replace(/\\right\s*\\\}/g, '\\right\\}')
+    // Fix overline notation in matrices
+    .replace(/\\overline\s+/g, '\\overline ')
+    .replace(/\{\\overline\s+([^}]+)\}/g, '{\\overline{$1}}')
     // Fix over notation
     .replace(/\\over\s+/g, '\\over ')
     // Fix common fraction issues

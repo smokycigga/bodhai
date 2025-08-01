@@ -71,6 +71,27 @@ class TopicPerformance:
             self.last_attempted = datetime.utcnow()
 
 @dataclass
+class UserStreak:
+    user_id: str
+    current_streak: int = 0
+    longest_streak: int = 0
+    last_test_date: Optional[str] = None  # Store as YYYY-MM-DD format
+    streak_start_date: Optional[str] = None
+    created_at: datetime = None
+    updated_at: datetime = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "user_id": self.user_id,
+            "current_streak": self.current_streak,
+            "longest_streak": self.longest_streak,
+            "last_test_date": self.last_test_date,
+            "streak_start_date": self.streak_start_date,
+            "created_at": self.created_at or datetime.utcnow(),
+            "updated_at": self.updated_at or datetime.utcnow()
+        }
+
+@dataclass
 class UserProfile:
     user_id: str
     exam_type: str
@@ -79,6 +100,7 @@ class UserProfile:
     mistake_questions: List[str]
     weak_topics: List[str]
     strong_topics: List[str]
+    streak_data: Optional[UserStreak] = None
     created_at: datetime = None
     updated_at: datetime = None
 
@@ -91,6 +113,7 @@ class UserProfile:
             "mistake_questions": self.mistake_questions,
             "weak_topics": self.weak_topics,
             "strong_topics": self.strong_topics,
+            "streak_data": self.streak_data.to_dict() if self.streak_data else None,
             "created_at": self.created_at or datetime.utcnow(),
             "updated_at": self.updated_at or datetime.utcnow()
         }

@@ -28,7 +28,22 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      appearance={{
+        baseTheme: 'dark',
+        elements: {
+          formButtonPrimary: 'bg-green-600 hover:bg-green-700 text-white',
+          card: 'bg-gray-900 shadow-xl',
+          headerTitle: 'text-white',
+          headerSubtitle: 'text-gray-400',
+          socialButtonsBlockButton: 'bg-white text-gray-900 hover:bg-gray-100',
+          formFieldInput: 'bg-gray-800 border-gray-700 text-white',
+          formFieldLabel: 'text-gray-300',
+          footerActionLink: 'text-green-400 hover:text-green-300'
+        }
+      }}
+    >
       <html lang="en" suppressHydrationWarning>
         <head>
           <script

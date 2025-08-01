@@ -16,8 +16,12 @@ import statistics
 
 # Import our enhanced modules
 from vector_db import VectorDBManager
-from models import Question, ExamType, Difficulty
+from models import Question, ExamType, Difficulty, UserStreak
 from gemini_analyzer import GeminiTestAnalyzer
+from question_types import (
+    QuestionTypeDetector, QuestionValidator, AnswerEvaluator, 
+    QuestionTypeEnhancer, QuestionType
+)
 
 load_dotenv()
 
@@ -32,7 +36,18 @@ class JSONEncoder(json.JSONEncoder):
 
 app = Flask(__name__)
 app.json_encoder = JSONEncoder
-CORS(app)
+
+# Configure CORS for production
+if os.getenv('FLASK_ENV') == 'production':
+    # Production: Restrict CORS to specific origins
+    allowed_origins = [
+        "https://your-frontend-domain.vercel.app",
+        "https://bodhai.com",  # Add your actual domain
+    ]
+    CORS(app, origins=allowed_origins)
+else:
+    # Development: Allow all origins
+    CORS(app)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -47,6 +62,7 @@ try:
     test_results_collection = db['test_results']
     questions_collection = db['questions']
     user_tasks_collection = db['user_tasks']  # New collection for task management
+    user_streaks_collection = db['user_streaks']  # New collection for streak tracking
     logger.info("MongoDB connected successfully")
 except Exception as e:
     logger.error(f"MongoDB connection failed: {e}")
@@ -92,39 +108,60 @@ def clean_mongo_doc(doc):
     return doc
 
 def load_and_vectorize_questions():
-    """Load questions from JSON and store in both MongoDB and ChromaDB for intelligent retrieval"""
+    """Load questions from exam-specific JSON folders and store in both MongoDB and ChromaDB for intelligent retrieval"""
     global all_questions
     # Use absolute path to pyqs folder
     pyqs_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pyqs")
 
-    logger.info("🧠 Loading questions with intelligent vectorization...")
+    logger.info("🧠 Loading questions with intelligent vectorization from exam-specific folders...")
     question_count = 0
     vectorized_count = 0
+    
+    # Define exam-specific folders
+    exam_folders = {
+        'jee_main': 'JEE_MAIN',
+        'jee_advanced': 'JEE_ADVANCED', 
+        'neet': 'NEET',
+        'bitsat': 'BITSAT',
+        'other_engineering': 'OTHER_ENGINEERING'
+    }
 
-    for filename in os.listdir(pyqs_folder):
-        if filename.endswith('.json'):
-            file_path = os.path.join(pyqs_folder, filename)
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
+    for folder_name, exam_type in exam_folders.items():
+        folder_path = os.path.join(pyqs_folder, folder_name)
+        if not os.path.exists(folder_path):
+            logger.warning(f"Exam folder {folder_name} not found, skipping...")
+            continue
+            
+        logger.info(f"Loading questions from {folder_name} folder...")
+        folder_question_count = 0
+        
+        for filename in os.listdir(folder_path):
+            if filename.endswith('.json'):
+                file_path = os.path.join(folder_path, filename)
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
 
-                # Handle different JSON structures
-                if isinstance(data, list):
-                    for item in data:
-                        if 'questions' in item:
-                            for question_data in item['questions']:
-                                processed_q = process_question_with_intelligence(question_data)
-                                if processed_q:
-                                    all_questions.append(processed_q)
-                                    question_count += 1
+                    # Handle different JSON structures
+                    if isinstance(data, list):
+                        for item in data:
+                            if 'questions' in item:
+                                for question_data in item['questions']:
+                                    processed_q = process_question_with_intelligence(question_data, exam_type)
+                                    if processed_q:
+                                        all_questions.append(processed_q)
+                                        question_count += 1
+                                        folder_question_count += 1
 
-                                    # Add to ChromaDB for intelligent retrieval
-                                    if add_question_to_vector_db(processed_q):
-                                        vectorized_count += 1
-            except Exception as e:
-                logger.warning(f"Error loading {filename}: {e}")
+                                        # Add to ChromaDB for intelligent retrieval
+                                        if add_question_to_vector_db(processed_q):
+                                            vectorized_count += 1
+                except Exception as e:
+                    logger.warning(f"Error loading {filename}: {e}")
+        
+        logger.info(f"Loaded {folder_question_count} questions from {folder_name}")
 
-    logger.info(f"Loaded {question_count} questions")
+    logger.info(f"Total loaded: {question_count} questions from all exam types")
     logger.info(f"🧠 Vectorized {vectorized_count} questions for intelligent retrieval")
 
     # Save to MongoDB for persistence
@@ -194,7 +231,7 @@ def process_latex_for_rendering(text: str) -> str:
 
     return processed_content
 
-def process_question_with_intelligence(question_data):
+def process_question_with_intelligence(question_data, exam_type='JEE_MAIN'):
     """Process question with enhanced metadata for intelligent retrieval"""
     try:
         question_id = question_data.get('question_id', '')
@@ -237,26 +274,34 @@ def process_question_with_intelligence(question_data):
         topic = question_data.get('topicName', '') or question_data.get('topic', '') or chapter
 
         # Create enhanced question object for intelligent processing
-        return {
+        enhanced_question = {
             'question_id': question_id,
             'content': content,
             'options': options,
             'correct_answer': correct_answer,
+            'correct_options': correct_options,  # Keep original for multi-correct questions
             'subject': subject,
             'chapter_group': chapter_group,
             'chapter': chapter,
             'topic': topic,
             'marks': question_data.get('marks', 4),
             'negative_marks': question_data.get('negMarks', 1),
+            'negMarks': question_data.get('negMarks', 1),  # Keep both for compatibility
             'type': question_data.get('type', 'mcq'),
             'explanation': question_data.get('explanation', ''),
             'difficulty': question_data.get('difficulty', 'medium'),
+            'exam_type': exam_type,  # Add exam type to question metadata
             'created_at': datetime.now(timezone.utc),
             # Enhanced metadata for intelligent retrieval
             'content_hash': hashlib.md5(content.encode()).hexdigest(),
             'topic_keywords': extract_topic_keywords(content, chapter, topic),
             'complexity_score': calculate_complexity_score(content, options)
         }
+        
+        # Enhance question with type detection and metadata
+        # enhanced_question = QuestionTypeEnhancer.enhance_question(enhanced_question)
+        
+        return enhanced_question
 
     except Exception as e:
         logger.warning(f"Error processing question: {e}")
@@ -344,25 +389,16 @@ def add_question_to_vector_db(question):
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check with intelligent system status"""
+    """Simple health check"""
     try:
-        # Check ChromaDB health
-        chroma_health = vector_db.get_database_health()
-        memory_usage = vector_db.get_memory_usage()
-
         return jsonify({
             "status": "healthy",
-            "total_questions": len(all_questions),
-            "intelligent_memory": {
-                "status": chroma_health.get('status', 'unknown'),
-                "vectorized_questions": memory_usage.get('total_questions', 0),
-                "memory_size_mb": memory_usage.get('database_size_mb', 0)
-            },
+            "server": "running",
             "timestamp": datetime.now(timezone.utc).isoformat()
         }), 200
     except Exception as e:
         return jsonify({
-            "status": "degraded",
+            "status": "error",
             "error": str(e)
         }), 500
 
@@ -845,6 +881,138 @@ def analyze_learning_trends(user_id):
     except Exception as e:
         logger.warning(f"Error analyzing learning trends: {e}")
         return {'trend': 'unknown'}
+
+# ================== STREAK MANAGEMENT FUNCTIONS ==================
+
+def update_user_streak(user_id):
+    """Update user streak when they complete a test"""
+    from datetime import date
+    
+    try:
+        today = date.today().isoformat()  # YYYY-MM-DD format
+        
+        # Get existing streak data
+        streak_doc = user_streaks_collection.find_one({'user_id': user_id})
+        
+        if not streak_doc:
+            # Create new streak record
+            new_streak = UserStreak(
+                user_id=user_id,
+                current_streak=1,
+                longest_streak=1,
+                last_test_date=today,
+                streak_start_date=today,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            user_streaks_collection.insert_one(new_streak.to_dict())
+            logger.info(f"Created new streak for user {user_id}")
+            return new_streak.to_dict()
+        
+        # Calculate days since last test
+        from datetime import date as date_class
+        last_test = date_class.fromisoformat(streak_doc['last_test_date']) if streak_doc['last_test_date'] else None
+        today_date = date_class.fromisoformat(today)
+        
+        if last_test:
+            days_diff = (today_date - last_test).days
+            
+            if days_diff == 0:
+                # Same day - don't update streak
+                logger.info(f"User {user_id} already tested today - no streak update")
+                return clean_mongo_doc(streak_doc)
+            elif days_diff == 1:
+                # Consecutive day - increment streak
+                new_current_streak = streak_doc['current_streak'] + 1
+                new_longest_streak = max(streak_doc['longest_streak'], new_current_streak)
+                
+                user_streaks_collection.update_one(
+                    {'user_id': user_id},
+                    {
+                        '$set': {
+                            'current_streak': new_current_streak,
+                            'longest_streak': new_longest_streak,
+                            'last_test_date': today,
+                            'updated_at': datetime.utcnow()
+                        }
+                    }
+                )
+                logger.info(f"Extended streak for user {user_id}: {new_current_streak} days")
+                
+                # Return updated data
+                updated_doc = user_streaks_collection.find_one({'user_id': user_id})
+                return clean_mongo_doc(updated_doc)
+            else:
+                # Streak broken - reset to 1
+                user_streaks_collection.update_one(
+                    {'user_id': user_id},
+                    {
+                        '$set': {
+                            'current_streak': 1,
+                            'last_test_date': today,
+                            'streak_start_date': today,
+                            'updated_at': datetime.utcnow()
+                        }
+                    }
+                )
+                logger.info(f"Streak broken for user {user_id} - reset to 1 day")
+                
+                # Return updated data
+                updated_doc = user_streaks_collection.find_one({'user_id': user_id})
+                return clean_mongo_doc(updated_doc)
+        else:
+            # No previous test date - start new streak
+            user_streaks_collection.update_one(
+                {'user_id': user_id},
+                {
+                    '$set': {
+                        'current_streak': 1,
+                        'last_test_date': today,
+                        'streak_start_date': today,
+                        'updated_at': datetime.utcnow()
+                    }
+                }
+            )
+            logger.info(f"Started new streak for user {user_id}")
+            
+            # Return updated data
+            updated_doc = user_streaks_collection.find_one({'user_id': user_id})
+            return clean_mongo_doc(updated_doc)
+            
+    except Exception as e:
+        logger.error(f"Error updating streak for user {user_id}: {e}")
+        return None
+
+def get_user_streak(user_id):
+    """Get current streak data for a user"""
+    try:
+        logger.info(f"Querying streak collection for user: {user_id}")
+        streak_doc = user_streaks_collection.find_one({'user_id': user_id})
+        
+        if streak_doc:
+            logger.info(f"Found streak data for user {user_id}: {streak_doc}")
+            return clean_mongo_doc(streak_doc)
+        else:
+            logger.info(f"No streak data found for user {user_id}, returning default")
+            # Return default streak data
+            default_data = {
+                'user_id': user_id,
+                'current_streak': 0,
+                'longest_streak': 0,
+                'last_test_date': None,
+                'streak_start_date': None
+            }
+            return default_data
+    except Exception as e:
+        logger.error(f"Error getting streak for user {user_id}: {e}")
+        # Return default data instead of None
+        return {
+            'user_id': user_id,
+            'current_streak': 0,
+            'longest_streak': 0,
+            'last_test_date': None,
+            'streak_start_date': None
+        }
 
 def get_question_by_id(question_id):
     """Get question by ID from memory or database"""
@@ -1668,6 +1836,54 @@ def get_user_stats(user_id):
             'stats': {}
         }), 500
 
+@app.route('/api/user-streak/<user_id>', methods=['GET'])
+def get_user_streak_endpoint(user_id):
+    """Get user's current streak data"""
+    try:
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'error': 'User ID is required'
+            }), 400
+        
+        logger.info(f"Getting streak data for user: {user_id}")
+        streak_data = get_user_streak(user_id)
+        
+        # Always return success with streak data (even if default)
+        if streak_data:
+            return jsonify({
+                'success': True,
+                'streak': streak_data
+            }), 200
+        else:
+            # Return default streak data instead of error
+            default_streak = {
+                'user_id': user_id,
+                'current_streak': 0,
+                'longest_streak': 0,
+                'last_test_date': None,
+                'streak_start_date': None
+            }
+            return jsonify({
+                'success': True,
+                'streak': default_streak
+            }), 200
+            
+    except Exception as e:
+        logger.error(f"Error getting user streak: {e}")
+        # Return default streak data instead of error
+        default_streak = {
+            'user_id': user_id,
+            'current_streak': 0,
+            'longest_streak': 0,
+            'last_test_date': None,
+            'streak_start_date': None
+        }
+        return jsonify({
+            'success': True,
+            'streak': default_streak
+        }), 200
+
 @app.route('/api/gemini-analysis', methods=['POST'])
 def generate_gemini_analysis():
     """Generate comprehensive analysis using Gemini AI"""
@@ -1908,32 +2124,71 @@ def evaluate_test():
 
         for i, question in enumerate(questions):
             user_answer = answers.get(str(i), '')
-            correct_answer = question.get('correct_answer', '')
-            is_correct = user_answer.upper() == correct_answer.upper() if user_answer and correct_answer else False
+            question_type = question.get('question_type', question.get('type', 'mcq'))
+            
+            # Evaluate answer based on question type
+            is_correct = False
+            score = 0
+            evaluation_details = {}
 
-            if is_correct:
-                correct_answers += 1
-                score = question.get('marks', 4)
-            elif user_answer: # Attempted but wrong
-                incorrect_answers += 1
-                score = -question.get('negative_marks', 1)
-            else: # Unattempted
-                score = 0
+            if user_answer:
+                if question_type == 'mcqm':
+                    # Multiple correct MCQ evaluation
+                    correct_options = question.get('correct_options', [])
+                    user_answers = user_answer if isinstance(user_answer, list) else [user_answer]
+                    evaluation_result = AnswerEvaluator.evaluate_mcqm(user_answers, correct_options)
+                    is_correct = evaluation_result['correct']
+                    score = evaluation_result['score']
+                    evaluation_details = evaluation_result
+                    
+                elif question_type in ['numerical', 'integer']:
+                    # Numerical/Integer answer evaluation
+                    correct_answer = question.get('correct_answer', question.get('answer', ''))
+                    if question_type == 'numerical':
+                        tolerance = question.get('tolerance', 0.01)
+                        is_correct = AnswerEvaluator.evaluate_numerical(user_answer, correct_answer, tolerance)
+                    else:
+                        is_correct = AnswerEvaluator.evaluate_integer(user_answer, correct_answer)
+                    
+                    if is_correct:
+                        score = question.get('marks', 4)
+                    else:
+                        score = -question.get('negMarks', 0)  # Usually no negative for numerical
+                        
+                else:
+                    # Single correct MCQ evaluation
+                    correct_answer = question.get('correct_answer', '')
+                    correct_options = question.get('correct_options', [correct_answer] if correct_answer else [])
+                    is_correct = AnswerEvaluator.evaluate_mcq(user_answer, correct_options)
+                    
+                    if is_correct:
+                        score = question.get('marks', 4)
+                    else:
+                        score = -question.get('negative_marks', question.get('negMarks', 1))
+
+                # Update counters
+                if is_correct:
+                    correct_answers += 1
+                else:
+                    incorrect_answers += 1
+            # If no answer, score is 0 (no penalty for unattempted)
 
             total_score += score
             
             # Debug logging
-            logger.info(f"Q{i}: user='{user_answer}', correct='{correct_answer}', is_correct={is_correct}, score={score}")
+            logger.info(f"Q{i} ({question_type}): user='{user_answer}', correct='{question.get('correct_options', [question.get('correct_answer', '')])[:3]}...', is_correct={is_correct}, score={score}")
 
             detailed_results.append({
                 'question_id': question.get('question_id', f'q_{i}'),
                 'user_answer': user_answer,
-                'correct_answer': correct_answer,
+                'correct_answer': question.get('correct_options', [question.get('correct_answer', '')]),
                 'is_correct': is_correct,
                 'score': score,
                 'subject': question.get('subject', 'Unknown'),
                 'chapter': question.get('chapter', 'Unknown'),
-                'topic': question.get('topic', 'Unknown')
+                'topic': question.get('topic', 'Unknown'),
+                'question_type': question_type,
+                'evaluation_details': evaluation_details
             })
 
         # Calculate percentage
@@ -1970,6 +2225,10 @@ def evaluate_test():
 
         # Update user profile
         update_user_profile_from_test(user_id, test_result)
+        
+        # Update user streak
+        streak_data = update_user_streak(user_id)
+        logger.info(f"Updated streak for user {user_id}: {streak_data}")
 
         return jsonify({
             'success': True,
@@ -2265,11 +2524,610 @@ def get_calendar_tasks(user_id):
         logger.error(f"Error fetching calendar tasks: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-if __name__ == '__main__':
-    # Load and vectorize questions on startup
-    load_and_vectorize_questions()
+@app.route('/api/generate-exam-specific-test', methods=['POST'])
+def generate_exam_specific_test():
+    """Generate test for specific exam type (JEE Main, JEE Advanced, NEET, BITSAT)"""
+    try:
+        data = request.json
+        user_id = data.get('user_id', 'anonymous')
+        exam_type = data.get('exam_type', 'JEE_MAIN').upper()
+        total_questions = min(data.get('total_questions', 30), 90)
+        
+        # Map exam types to folder names
+        exam_folder_map = {
+            'JEE_MAIN': 'jee_main',
+            'JEE_ADVANCED': 'jee_advanced',
+            'NEET': 'neet',
+            'BITSAT': 'bitsat',
+            'OTHER_ENGINEERING': 'other_engineering'
+        }
+        
+        if exam_type not in exam_folder_map:
+            return jsonify({
+                "success": False,
+                "error": f"Invalid exam type. Supported types: {list(exam_folder_map.keys())}"
+            }), 400
+        
+        # Get exam-specific subjects
+        if exam_type == 'NEET':
+            subjects = data.get('subjects', ['Physics', 'Chemistry', 'Biology'])
+        else:
+            subjects = data.get('subjects', ['Physics', 'Chemistry', 'Mathematics'])
+        
+        logger.info(f"🎯 Generating {exam_type} test for user {user_id}")
+        
+        # Filter questions by exam type
+        exam_questions = [q for q in all_questions if q.get('exam_type') == exam_type]
+        
+        if not exam_questions:
+            return jsonify({
+                "success": False,
+                "error": f"No questions available for {exam_type}. Please load questions first."
+            }), 404
+        
+        # Get user's question history to avoid repetition
+        seen_questions = get_user_question_history(user_id)
+        
+        # Filter out seen questions
+        available_questions = [q for q in exam_questions if q['question_id'] not in seen_questions]
+        
+        if len(available_questions) < total_questions:
+            logger.warning(f"Only {len(available_questions)} new questions available for {exam_type}")
+        
+        # Generate test questions in subject blocks (consecutive order)
+        test_questions = []
+        questions_per_subject = total_questions // len(subjects)
+        remaining_questions_for_distribution = total_questions % len(subjects)
+        
+        # Keep track of selected questions to avoid duplicates
+        selected_question_ids = set()
+        
+        for i, subject in enumerate(subjects):
+            subject_questions = [q for q in available_questions 
+                               if q['subject'] == subject and q['question_id'] not in selected_question_ids]
+            
+            if not subject_questions:
+                logger.warning(f"No {subject} questions available for {exam_type}")
+                continue
+            
+            # Calculate questions for this subject (distribute remaining evenly)
+            subject_question_count = questions_per_subject
+            if i < remaining_questions_for_distribution:
+                subject_question_count += 1
+            
+            # Randomly select questions for this subject
+            selected_count = min(subject_question_count, len(subject_questions))
+            selected_questions = random.sample(subject_questions, selected_count)
+            
+            # Add selection reason and track selected IDs
+            for q in selected_questions:
+                q['selection_reason'] = f'{exam_type.lower()}_{subject.lower()}'
+                selected_question_ids.add(q['question_id'])
+            
+            # Add questions in subject blocks (consecutive order)
+            test_questions.extend(selected_questions)
+        
+        # Fill remaining slots if needed (append to end)
+        if len(test_questions) < total_questions:
+            remaining_slots = total_questions - len(test_questions)
+            remaining_questions = [q for q in available_questions 
+                                 if q['question_id'] not in selected_question_ids]
+            if remaining_questions:
+                additional_questions = random.sample(
+                    remaining_questions, 
+                    min(remaining_slots, len(remaining_questions))
+                )
+                test_questions.extend(additional_questions)
+        
+        # DO NOT shuffle - keep questions in subject blocks
+        # The questions are now organized as: [Physics Q1-Q5, Chemistry Q6-Q10, Math Q11-Q15]
+        test_questions = test_questions[:total_questions]
+        
+        # Create test session
+        test_id = f"{exam_type.lower()}_test_{user_id}_{int(datetime.now(timezone.utc).timestamp())}"
+        
+        test_session = {
+            'test_id': test_id,
+            'user_id': user_id,
+            'exam_type': exam_type,
+            'questions': test_questions,
+            'total_questions': len(test_questions),
+            'subjects': subjects,
+            'created_at': datetime.now(timezone.utc),
+            'status': 'active'
+        }
+        
+        # Save test session
+        try:
+            db['test_sessions'].insert_one(test_session)
+        except Exception as e:
+            logger.warning(f"Error saving test session: {e}")
+        
+        # Clean questions for JSON serialization
+        clean_questions = [clean_mongo_doc(q) for q in test_questions]
+        
+        logger.info(f"Generated {exam_type} test with {len(test_questions)} questions in subject blocks")
+        
+        # Log subject block organization
+        current_position = 0
+        for subject in subjects:
+            subject_count = len([q for q in test_questions if q['subject'] == subject])
+            if subject_count > 0:
+                end_position = current_position + subject_count
+                logger.info(f"{subject}: Questions {current_position + 1}-{end_position}")
+                current_position = end_position
+        
+        return jsonify({
+            "success": True,
+            "test_id": test_id,
+            "exam_type": exam_type,
+            "questions": clean_questions,
+            "metadata": {
+                "total_questions": len(test_questions),
+                "subjects": subjects,
+                "questions_per_subject": {s: len([q for q in test_questions if q['subject'] == s]) for s in subjects},
+                "available_questions": len(available_questions),
+                "previously_seen": len(seen_questions)
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Exam-specific test generation failed: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
-    # Start intelligent server
+@app.route('/api/exam-types', methods=['GET'])
+def get_exam_types():
+    """Get available exam types and their question counts"""
+    try:
+        exam_stats = {}
+        
+        # Count questions by exam type
+        for question in all_questions:
+            exam_type = question.get('exam_type', 'UNKNOWN')
+            if exam_type not in exam_stats:
+                exam_stats[exam_type] = {
+                    'total_questions': 0,
+                    'subjects': {}
+                }
+            
+            exam_stats[exam_type]['total_questions'] += 1
+            
+            subject = question.get('subject', 'Unknown')
+            if subject not in exam_stats[exam_type]['subjects']:
+                exam_stats[exam_type]['subjects'][subject] = 0
+            exam_stats[exam_type]['subjects'][subject] += 1
+        
+        return jsonify({
+            "success": True,
+            "exam_types": exam_stats,
+            "total_questions": len(all_questions)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting exam types: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route('/api/simple-ai-suggestions', methods=['POST'])
+def generate_simple_ai_suggestions():
+    """Generate simple AI study suggestions with minimal complexity"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        avg_score = data.get('avg_score', 0)
+        weak_topics = data.get('weak_topics', [])
+        total_tests = data.get('total_tests', 0)
+        
+        logger.info(f"Generating simple AI suggestions for user {user_id}")
+        
+        suggestions = []
+        
+        # Try Gemini with simple prompt (with timeout)
+        try:
+            import google.generativeai as genai
+            api_key = os.getenv('GEMINI_API_KEY')
+            
+            if api_key and total_tests > 0:
+                genai.configure(api_key=api_key)
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                
+                # Simple, focused prompt
+                weak_topics_str = ", ".join([f"{topic['subject']} ({topic['score']}%)" for topic in weak_topics[:3]])
+                
+                prompt = f"""As a study advisor, suggest 3 specific study tasks for a student with:
+- Average score: {avg_score}%
+- Weak areas: {weak_topics_str if weak_topics_str else "General improvement needed"}
+- Tests completed: {total_tests}
+
+Return ONLY a JSON array with format:
+[{{"title": "Task name", "description": "Brief description", "priority": "high/medium/low", "duration": "X hours", "category": "study/practice/test"}}]
+
+Keep descriptions under 50 words. Focus on actionable, specific tasks."""
+
+                # Simple timeout mechanism
+                import threading
+                import time
+                
+                response = None
+                error = None
+                
+                def generate_with_timeout():
+                    nonlocal response, error
+                    try:
+                        response = model.generate_content(prompt)
+                    except Exception as e:
+                        error = e
+                
+                # Start generation in thread with timeout
+                thread = threading.Thread(target=generate_with_timeout)
+                thread.daemon = True
+                thread.start()
+                thread.join(timeout=10)  # 10-second timeout
+                
+                if thread.is_alive():
+                    raise TimeoutError("Gemini API timeout")
+                
+                if error:
+                    raise error
+                
+                if response and response.text:
+                    # Clean and parse JSON response
+                    import json
+                    try:
+                        response_text = response.text.strip()
+                        
+                        # Extract JSON if it's wrapped in other text
+                        if '[' in response_text and ']' in response_text:
+                            start = response_text.find('[')
+                            end = response_text.rfind(']') + 1
+                            response_text = response_text[start:end]
+                        
+                        ai_suggestions = json.loads(response_text)
+                        if isinstance(ai_suggestions, list) and len(ai_suggestions) > 0:
+                            for i, suggestion in enumerate(ai_suggestions[:3]):
+                                if isinstance(suggestion, dict):
+                                    suggestions.append({
+                                        'id': i + 1,
+                                        'title': str(suggestion.get('title', 'Study Task')),
+                                        'description': str(suggestion.get('description', 'Focus on improvement')),
+                                        'priority': str(suggestion.get('priority', 'medium')).lower(),
+                                        'duration': str(suggestion.get('duration', '1 hour')),
+                                        'category': str(suggestion.get('category', 'study'))
+                                    })
+                        else:
+                            logger.warning("AI response is not a valid list of suggestions")
+                            raise Exception("Invalid AI response format")
+                    except (json.JSONDecodeError, KeyError, ValueError) as e:
+                        logger.warning(f"Failed to parse AI response: {e}")
+                        raise Exception("Invalid AI response")
+                        
+        except TimeoutError:
+            logger.warning("Gemini API timeout - using fallback")
+            
+        except Exception as e:
+            logger.warning(f"AI generation failed: {e}, using rule-based fallback")
+            
+        # Fallback to rule-based suggestions if AI fails
+        if not suggestions:
+            suggestions = generate_rule_based_suggestions(avg_score, weak_topics, total_tests)
+            
+        return jsonify({
+            "success": True,
+            "suggestions": suggestions[:3],  # Limit to 3 suggestions
+            "source": "ai" if len([s for s in suggestions if 'ai' in str(s)]) > 0 else "rule-based"
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error generating simple AI suggestions: {e}")
+        # Emergency fallback
+        return jsonify({
+            "success": True,
+            "suggestions": [
+                {
+                    "id": 1,
+                    "title": "Review Fundamentals",
+                    "description": "Focus on basic concepts and core principles",
+                    "priority": "high",
+                    "duration": "2 hours",
+                    "category": "study"
+                }
+            ],
+            "source": "emergency-fallback"
+        }), 200
+
+def generate_rule_based_suggestions(avg_score, weak_topics, total_tests):
+    """Generate rule-based suggestions as fallback"""
+    suggestions = []
+    
+    # Score-based suggestions
+    if avg_score < 50:
+        suggestions.append({
+            "id": 1,
+            "title": "Foundation Building",
+            "description": "Focus on basic concepts and fundamentals",
+            "priority": "high",
+            "duration": "2 hours",
+            "category": "study"
+        })
+    elif avg_score < 70:
+        suggestions.append({
+            "id": 1,
+            "title": "Concept Reinforcement",
+            "description": "Practice medium-difficulty problems and review theory",
+            "priority": "medium",
+            "duration": "1.5 hours",
+            "category": "practice"
+        })
+    else:
+        suggestions.append({
+            "id": 1,
+            "title": "Advanced Practice",
+            "description": "Tackle challenging problems and time-based tests",
+            "priority": "medium",
+            "duration": "2 hours",
+            "category": "test"
+        })
+    
+    # Weak topic suggestions
+    for i, topic in enumerate(weak_topics[:2]):
+        try:
+            # Safely convert score to float
+            score = float(topic.get('score', 0))
+            subject = str(topic.get('subject', 'Subject'))
+            
+            suggestions.append({
+                "id": len(suggestions) + 1,
+                "title": f"Improve {subject}",
+                "description": f"Focus on {subject} - current score: {score}%",
+                "priority": "high" if score < 50 else "medium",
+                "duration": "1.5 hours",
+                "category": "practice"
+            })
+        except (ValueError, TypeError, KeyError) as e:
+            logger.warning(f"Error processing weak topic {topic}: {e}")
+            # Skip malformed topic data
+            continue
+    
+    # Always suggest a practice test
+    if len(suggestions) < 3:
+        suggestions.append({
+            "id": len(suggestions) + 1,
+            "title": "Practice Test",
+            "description": "Take a full-length practice test to assess progress",
+            "priority": "low",
+            "duration": "3 hours",
+            "category": "test"
+        })
+    
+    return suggestions[:3]
+
+@app.route('/api/detailed-ai-suggestions', methods=['POST'])
+def generate_detailed_ai_suggestions():
+    """Generate specific AI study suggestions based on detailed test analysis"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        analysis = data.get('detailed_analysis', {})
+        
+        logger.info(f"Generating detailed AI suggestions for user {user_id}")
+        
+        suggestions = []
+        
+        # Try Gemini with detailed, specific prompt
+        try:
+            import google.generativeai as genai
+            api_key = os.getenv('GEMINI_API_KEY')
+            
+            if api_key and analysis.get('specific_mistakes'):
+                genai.configure(api_key=api_key)
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                
+                # Create specific prompt based on actual mistakes
+                weak_topics_str = ""
+                if analysis.get('weak_topics'):
+                    weak_topics_str = "\n".join([
+                        f"- {topic['topic']} in {topic['subject']}: {topic['error_rate']}% error rate ({topic['mistakes']}/{topic['total']} wrong)"
+                        for topic in analysis['weak_topics'][:3]
+                    ])
+                
+                mistake_patterns = ""
+                if analysis.get('specific_mistakes'):
+                    recent_mistakes = analysis['specific_mistakes'][:5]
+                    mistake_patterns = "\n".join([
+                        f"- {mistake['subject']} - {mistake['topic']}: {mistake['question_type']} question"
+                        for mistake in recent_mistakes
+                    ])
+                
+                prompt = f"""As a personalized tutor, create 3 specific study recommendations for a student based on their actual test mistakes:
+
+WEAK AREAS (topics with >30% error rate):
+{weak_topics_str if weak_topics_str else "No major weak areas identified"}
+
+RECENT MISTAKES:
+{mistake_patterns if mistake_patterns else "Limited mistake data available"}
+
+OVERALL SCORE: {analysis.get('overall_score', 'N/A')}%
+
+Create targeted suggestions that:
+1. Address the specific topics they're struggling with
+2. Focus on the exact types of questions they get wrong
+3. Provide actionable study steps
+
+Return ONLY a JSON array:
+[{{"title": "Specific Topic/Skill", "description": "What exactly to study and why", "priority": "high/medium/low", "duration": "X hours", "category": "study/practice/test"}}]
+
+Keep descriptions specific and under 100 words. Focus on their actual weak areas."""
+
+                # Use threading timeout
+                import threading
+                
+                response = None
+                error = None
+                
+                def generate_with_timeout():
+                    nonlocal response, error
+                    try:
+                        response = model.generate_content(prompt)
+                    except Exception as e:
+                        error = e
+                
+                thread = threading.Thread(target=generate_with_timeout)
+                thread.daemon = True
+                thread.start()
+                thread.join(timeout=15)  # 15-second timeout for detailed analysis
+                
+                if thread.is_alive():
+                    raise TimeoutError("Gemini API timeout")
+                
+                if error:
+                    raise error
+                
+                if response and response.text:
+                    # Parse AI response
+                    import json
+                    try:
+                        response_text = response.text.strip()
+                        
+                        # Extract JSON
+                        if '[' in response_text and ']' in response_text:
+                            start = response_text.find('[')
+                            end = response_text.rfind(']') + 1
+                            response_text = response_text[start:end]
+                        
+                        ai_suggestions = json.loads(response_text)
+                        if isinstance(ai_suggestions, list) and len(ai_suggestions) > 0:
+                            for i, suggestion in enumerate(ai_suggestions[:3]):
+                                if isinstance(suggestion, dict):
+                                    suggestions.append({
+                                        'id': i + 1,
+                                        'title': str(suggestion.get('title', 'Study Task')),
+                                        'description': str(suggestion.get('description', 'Focus on improvement')),
+                                        'priority': str(suggestion.get('priority', 'medium')).lower(),
+                                        'duration': str(suggestion.get('duration', '2 hours')),
+                                        'category': str(suggestion.get('category', 'study'))
+                                    })
+                        else:
+                            raise Exception("Invalid AI response format")
+                    except (json.JSONDecodeError, KeyError, ValueError) as e:
+                        logger.warning(f"Failed to parse detailed AI response: {e}")
+                        raise Exception("Invalid AI response")
+                        
+        except Exception as e:
+            logger.warning(f"Detailed AI generation failed: {e}, using enhanced fallback")
+            
+        # Enhanced fallback based on analysis
+        if not suggestions:
+            suggestions = generate_detailed_fallback_suggestions(analysis)
+            
+        return jsonify({
+            "success": True,
+            "suggestions": suggestions[:3],
+            "source": "ai" if any('ai' in str(s) for s in suggestions) else "enhanced-analysis"
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error generating detailed AI suggestions: {e}")
+        # Emergency fallback
+        return jsonify({
+            "success": True,
+            "suggestions": [
+                {
+                    "id": 1,
+                    "title": "Review Recent Test Mistakes",
+                    "description": "Carefully go through your recent test results and identify patterns in your mistakes",
+                    "priority": "medium",
+                    "duration": "1 hour",
+                    "category": "review"
+                }
+            ],
+            "source": "emergency-fallback"
+        }), 200
+
+def generate_detailed_fallback_suggestions(analysis):
+    """Generate detailed suggestions based on analysis without AI"""
+    suggestions = []
+    
+    # Generate specific suggestions for weak topics
+    if analysis.get('weak_topics'):
+        for i, weak_topic in enumerate(analysis['weak_topics'][:2]):
+            title = f"Master {weak_topic['topic']}"
+            
+            # Create specific description based on error patterns
+            main_issues = weak_topic.get('main_issue_types', [])
+            if main_issues:
+                issue_text = " and ".join(main_issues)
+                description = f"You have a {weak_topic['error_rate']}% error rate in {weak_topic['topic']} ({weak_topic['subject']}). Focus on {issue_text} questions. Practice {weak_topic['mistakes']} more problems in this area."
+            else:
+                description = f"Strengthen your understanding of {weak_topic['topic']} in {weak_topic['subject']}. You got {weak_topic['mistakes']} out of {weak_topic['total']} questions wrong."
+            
+            suggestions.append({
+                "id": i + 1,
+                "title": title,
+                "description": description,
+                "priority": "high" if float(weak_topic['error_rate']) > 60 else "medium",
+                "duration": "2 hours",
+                "category": "practice"
+            })
+    
+    # Add concept review suggestion if many basic errors
+    if analysis.get('specific_mistakes'):
+        basic_errors = [m for m in analysis['specific_mistakes'] 
+                       if m.get('difficulty') == 'easy' or m.get('question_type') == 'Definition']
+        
+        if len(basic_errors) > 2:
+            suggestions.append({
+                "id": len(suggestions) + 1,
+                "title": "Strengthen Fundamentals",
+                "description": f"You made {len(basic_errors)} basic conceptual errors. Review fundamental definitions and principles before attempting advanced problems.",
+                "priority": "high",
+                "duration": "3 hours",
+                "category": "study"
+            })
+    
+    # Add question type specific practice
+    if analysis.get('specific_mistakes'):
+        question_type_errors = {}
+        for mistake in analysis['specific_mistakes']:
+            q_type = mistake.get('question_type', 'Unknown')
+            if q_type not in question_type_errors:
+                question_type_errors[q_type] = 0
+            question_type_errors[q_type] += 1
+        
+        # Find most problematic question type
+        if question_type_errors:
+            top_problem_type = max(question_type_errors.items(), key=lambda x: x[1])
+            if top_problem_type[1] > 1:  # More than 1 mistake of this type
+                suggestions.append({
+                    "id": len(suggestions) + 1,
+                    "title": f"Practice {top_problem_type[0]} Questions",
+                    "description": f"You struggled with {top_problem_type[1]} {top_problem_type[0]} questions. Practice this specific question format until you're comfortable.",
+                    "priority": "medium",
+                    "duration": "1.5 hours",
+                    "category": "practice"
+                })
+    
+    # Ensure at least one suggestion
+    if not suggestions:
+        suggestions.append({
+            "id": 1,
+            "title": "Comprehensive Review",
+            "description": "Review your recent test performance and identify areas for improvement",
+            "priority": "medium",
+            "duration": "2 hours",
+            "category": "review"
+        })
+    
+    return suggestions[:3]
+
+if __name__ == '__main__':
+    # Load questions on startup
+    load_and_vectorize_questions()
+    
+    # Run the Flask app
     port = int(os.getenv('PORT', 5000))
-    logger.info(f"Starting JEE Main Server on port {port}")
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=os.getenv('FLASK_ENV') != 'production')

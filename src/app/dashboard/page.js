@@ -108,6 +108,58 @@ export default function Dashboard() {
     return { totalTests, avgScore, avgTime, totalQuestions };
   };
 
+  const calculateTrends = () => {
+    const filtered = getFilteredResults();
+    if (filtered.length < 2) return { testsChange: '+0%', scoreChange: '+0%', questionsChange: '+0', timeChange: '+0m' };
+
+    // Compare last 3 tests vs previous 3 tests (or available tests)
+    const recentCount = Math.min(3, Math.floor(filtered.length / 2));
+    const currentPeriod = filtered.slice(-recentCount);
+    const previousPeriod = filtered.slice(-(recentCount * 2), -recentCount);
+
+    if (previousPeriod.length === 0) return { testsChange: '+0%', scoreChange: '+0%', questionsChange: '+0', timeChange: '+0m' };
+
+    // Calculate current metrics (recent tests)
+    const currentTests = currentPeriod.length;
+    const currentQuestions = currentPeriod.reduce((sum, test) => sum + (test.totalQuestions || 0), 0);
+    const currentCorrect = currentPeriod.reduce((sum, test) => sum + (test.correctAnswers || test.results?.correct_answers || 0), 0);
+    const currentAvgScore = currentQuestions > 0 ? (currentCorrect / currentQuestions) * 100 : 0;
+    const currentAvgTime = currentPeriod.length > 0 ? currentPeriod.reduce((sum, test) => sum + (test.timeTaken || 0), 0) / currentPeriod.length / 60 : 0;
+
+    // Calculate previous metrics (earlier tests)
+    const previousTests = previousPeriod.length;
+    const previousQuestions = previousPeriod.reduce((sum, test) => sum + (test.totalQuestions || 0), 0);
+    const previousCorrect = previousPeriod.reduce((sum, test) => sum + (test.correctAnswers || test.results?.correct_answers || 0), 0);
+    const previousAvgScore = previousQuestions > 0 ? (previousCorrect / previousQuestions) * 100 : 0;
+    const previousAvgTime = previousPeriod.length > 0 ? previousPeriod.reduce((sum, test) => sum + (test.timeTaken || 0), 0) / previousPeriod.length / 60 : 0;
+
+    // Calculate changes
+    const testsChangePercent = previousTests > 0 ? ((currentTests - previousTests) / previousTests * 100).toFixed(1) : 0;
+    const scoreChangePercent = previousAvgScore > 0 ? ((currentAvgScore - previousAvgScore) / previousAvgScore * 100).toFixed(1) : 0;
+    
+    // For questions, show average per test rather than total (more meaningful)
+    const currentAvgQuestions = currentTests > 0 ? currentQuestions / currentTests : 0;
+    const previousAvgQuestions = previousTests > 0 ? previousQuestions / previousTests : 0;
+    const questionsChange = currentAvgQuestions - previousAvgQuestions;
+    
+    const timeChange = (previousAvgTime - currentAvgTime).toFixed(1); // Positive means faster
+
+    // Calculate consistency (lower standard deviation = higher consistency)
+    const allScores = filtered.map(test => parseFloat(test.results?.percentage || test.results?.accuracy || 0));
+    const avgScore = allScores.reduce((sum, score) => sum + score, 0) / allScores.length;
+    const variance = allScores.reduce((sum, score) => sum + Math.pow(score - avgScore, 2), 0) / allScores.length;
+    const standardDeviation = Math.sqrt(variance);
+    const consistency = Math.max(0, Math.min(100, 100 - (standardDeviation * 2))); // Scale to 0-100
+
+    return {
+      testsChange: `${testsChangePercent >= 0 ? '+' : ''}${testsChangePercent}%`,
+      scoreChange: `${scoreChangePercent >= 0 ? '+' : ''}${scoreChangePercent}%`,
+      questionsChange: `${questionsChange >= 0 ? '+' : ''}${questionsChange.toFixed(1)}`,
+      timeChange: `${timeChange >= 0 ? '-' : '+'}${Math.abs(timeChange)}m`,
+      consistency: consistency.toFixed(0)
+    };
+  };
+
   const getChartData = () => {
     const filtered = getFilteredResults();
 
@@ -158,8 +210,8 @@ export default function Dashboard() {
         .sort((a, b) => b.score - a.score) // Sort by performance
       : [];
 
-    // Simplified score distribution - only show if we have enough data
-    const scoreDistribution = filtered.length >= 3 ? (() => {
+    // Score distribution - show even with minimal data
+    const scoreDistribution = filtered.length >= 1 ? (() => {
       const ranges = { "Excellent (90-100%)": 0, "Good (70-89%)": 0, "Needs Work (<70%)": 0 };
       filtered.forEach(test => {
         const score = parseFloat(test.results?.percentage || test.results?.accuracy || 0);
@@ -228,6 +280,7 @@ export default function Dashboard() {
   }
 
   const stats = getStats();
+  const trends = calculateTrends();
   const chartData = getChartData();
   const COLORS = [CHART_COLORS.primary, CHART_COLORS.secondary, CHART_COLORS.tertiary];
 
@@ -297,7 +350,9 @@ export default function Dashboard() {
                       <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
                         {stats.totalTests}
                       </div>
-                      <div className="text-sm text-green-600 font-semibold mt-1">+12% this month</div>
+                      <div className={`text-sm font-semibold mt-1 ${trends.testsChange.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
+                        {trends.testsChange} this period
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -321,7 +376,9 @@ export default function Dashboard() {
                       <div className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent">
                         {stats.avgScore}%
                       </div>
-                      <div className="text-sm text-green-600 font-semibold mt-1">+5.2% improvement</div>
+                      <div className={`text-sm font-semibold mt-1 ${trends.scoreChange.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
+                        {trends.scoreChange} improvement
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -345,7 +402,9 @@ export default function Dashboard() {
                       <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent">
                         {stats.totalQuestions}
                       </div>
-                      <div className="text-sm text-green-600 font-semibold mt-1">+28 this week</div>
+                      <div className={`text-sm font-semibold mt-1 ${trends.questionsChange.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
+                        {trends.questionsChange} avg per test
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -369,7 +428,9 @@ export default function Dashboard() {
                       <div className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
                         {stats.avgTime}m
                       </div>
-                      <div className="text-sm text-red-600 font-semibold mt-1">-2.1m faster</div>
+                      <div className={`text-sm font-semibold mt-1 ${trends.timeChange.startsWith('-') ? 'text-green-600' : 'text-red-600'}`}>
+                        {trends.timeChange} {trends.timeChange.startsWith('-') ? 'faster' : 'slower'}
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -591,7 +652,19 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="flex justify-center" style={{ height: "350px" }}>
-                  {typeof window !== 'undefined' && (
+                  {chartData.scoreDistribution.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center text-center h-full">
+                      <div className="w-20 h-20 bg-muted/20 rounded-full flex items-center justify-center mb-4">
+                        <svg className="w-10 h-10 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <h4 className="text-lg font-semibold text-foreground mb-2">No Score Data</h4>
+                      <p className="text-muted-foreground text-sm">
+                        Complete some tests to see your score distribution
+                      </p>
+                    </div>
+                  ) : typeof window !== 'undefined' && (
                     <ReactApexChart
                       type="donut"
                       height={350}
@@ -604,7 +677,7 @@ export default function Dashboard() {
                           fontFamily: 'Inter, sans-serif',
                         },
                         colors: ['#10B981', '#3B82F6', '#F59E0B', '#EF4444'],
-                        labels: chartData.scoreDistribution.map(item => `${item.range}% Range`),
+                        labels: chartData.scoreDistribution.map(item => item.range),
                         legend: {
                           position: 'bottom',
                           fontSize: '15px',
@@ -727,7 +800,10 @@ export default function Dashboard() {
                   </div>
                   <h4 className="text-lg font-bold text-foreground mb-2">Excellence Rate</h4>
                   <div className="text-3xl font-bold text-green-600 mb-1">
-                    {chartData.scoreDistribution.filter(item => parseInt(item.range.split('-')[0]) >= 80).reduce((sum, item) => sum + item.percentage, 0)}%
+                    {chartData.scoreDistribution.length > 0 
+                      ? chartData.scoreDistribution.filter(item => item.range.includes('Excellent')).reduce((sum, item) => sum + parseInt(item.percentage), 0)
+                      : Math.round((getFilteredResults().filter(test => parseFloat(test.results?.percentage || test.results?.accuracy || 0) >= 80).length / getFilteredResults().length) * 100)
+                    }%
                   </div>
                   <p className="text-sm text-muted-foreground">Tests scoring 80% or above</p>
                 </div>
@@ -742,8 +818,10 @@ export default function Dashboard() {
                     </svg>
                   </div>
                   <h4 className="text-lg font-bold text-foreground mb-2">Growth Trend</h4>
-                  <div className="text-3xl font-bold text-blue-600 mb-1">+15.2%</div>
-                  <p className="text-sm text-muted-foreground">Improvement this month</p>
+                  <div className={`text-3xl font-bold mb-1 ${trends.scoreChange.startsWith('+') ? 'text-blue-600' : 'text-red-600'}`}>
+                    {trends.scoreChange}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Score improvement this period</p>
                 </div>
               </div>
 
@@ -756,7 +834,7 @@ export default function Dashboard() {
                     </svg>
                   </div>
                   <h4 className="text-lg font-bold text-foreground mb-2">Consistency</h4>
-                  <div className="text-3xl font-bold text-orange-600 mb-1">92%</div>
+                  <div className="text-3xl font-bold text-orange-600 mb-1">{trends.consistency}%</div>
                   <p className="text-sm text-muted-foreground">Performance stability</p>
                 </div>
               </div>
