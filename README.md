@@ -1,4 +1,4 @@
-# BodhAI - AI-Powered Personalized Learning Platform
+# BodhAI - AI-Powered Personalized Learning Platform 🚀
 
 <div align="center">
 
