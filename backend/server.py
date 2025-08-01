@@ -3125,9 +3125,13 @@ def generate_detailed_fallback_suggestions(analysis):
     return suggestions[:3]
 
 if __name__ == '__main__':
-    # Load questions on startup
-    load_and_vectorize_questions()
+    # Skip question loading on production deployment to avoid memory issues
+    is_production = os.getenv('RENDER') or os.getenv('FLASK_ENV') == 'production'
+    
+    if not is_production:
+        # Only load questions in development
+        load_and_vectorize_questions()
     
     # Run the Flask app
     port = int(os.getenv('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=os.getenv('FLASK_ENV') != 'production')
+    app.run(host='0.0.0.0', port=port, debug=not is_production)
