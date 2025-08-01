@@ -37,17 +37,11 @@ class JSONEncoder(json.JSONEncoder):
 app = Flask(__name__)
 app.json_encoder = JSONEncoder
 
-# Configure CORS for production
-if os.getenv('FLASK_ENV') == 'production':
-    # Production: Restrict CORS to specific origins
-    allowed_origins = [
-        "https://your-frontend-domain.vercel.app",
-        "https://bodhai.com",  # Add your actual domain
-    ]
-    CORS(app, origins=allowed_origins)
-else:
-    # Development: Allow all origins
-    CORS(app)
+# Configure CORS - Allow all origins for now
+CORS(app, 
+     origins=["*"],  # Allow all origins temporarily
+     allow_headers=["*"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
