@@ -59,7 +59,8 @@ const StudyPlannerDashboard = () => {
   // Fetch user tasks
   const fetchTasks = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/user-tasks/${userId}`);
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_BASE_URL}/api/user-tasks/${userId}`);
       if (response.ok) {
         const data = await response.json();
         setTasks(data.tasks || []);
@@ -87,7 +88,8 @@ const StudyPlannerDashboard = () => {
         request_type: 'specific_study_suggestions'
       };
 
-      const response = await fetch('http://localhost:5000/api/detailed-ai-suggestions', {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_BASE_URL}/api/detailed-ai-suggestions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(promptData),
@@ -370,7 +372,8 @@ const StudyPlannerDashboard = () => {
   // Task CRUD operations
   const createTask = async (taskData) => {
     try {
-      const response = await fetch('http://localhost:5000/api/user-tasks', {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_BASE_URL}/api/user-tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...taskData, user_id: userId }),
@@ -389,7 +392,8 @@ const StudyPlannerDashboard = () => {
 
   const updateTask = async (taskId, updates) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/user-tasks/${taskId}`, {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_BASE_URL}/api/user-tasks/${taskId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
@@ -408,7 +412,8 @@ const StudyPlannerDashboard = () => {
 
   const deleteTask = async (taskId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/user-tasks/${taskId}`, {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_BASE_URL}/api/user-tasks/${taskId}`, {
         method: 'DELETE',
       });
 
