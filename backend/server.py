@@ -399,11 +399,28 @@ def add_question_to_vector_db(question):
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Simple health check"""
+    """Health check with intelligent system status"""
     try:
+        # Check ChromaDB health if available
+        intelligent_memory = {"status": "disabled", "vectorized_questions": 0, "memory_size_mb": 0}
+        
+        if vector_db:
+            try:
+                memory_usage = vector_db.get_memory_usage()
+                intelligent_memory = {
+                    "status": "active",
+                    "vectorized_questions": memory_usage.get('total_questions', 0),
+                    "memory_size_mb": memory_usage.get('database_size_mb', 0)
+                }
+            except Exception as e:
+                logger.warning(f"ChromaDB health check failed: {e}")
+                intelligent_memory = {"status": "error", "vectorized_questions": 0, "memory_size_mb": 0}
+
         return jsonify({
             "status": "healthy",
             "server": "running",
+            "total_questions": len(all_questions),
+            "intelligent_memory": intelligent_memory,
             "timestamp": datetime.now(timezone.utc).isoformat()
         }), 200
     except Exception as e:
