@@ -149,7 +149,8 @@ export default function CreateMockTest() {
             console.log(`🎯 Generating ${examGoal} test with ${totalQuestions} questions`);
             console.log(`📚 Subjects: ${subjects.join(', ')}`);
 
-            const response = await fetch("http://localhost:5000/api/generate-exam-specific-test", {
+            const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const response = await fetch(`${API_BASE_URL}/api/generate-exam-specific-test`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

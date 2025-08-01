@@ -12,7 +12,8 @@ const StudyStreakWidget = () => {
   // Check if backend is running
   const checkBackendStatus = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/health');
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_BASE_URL}/api/health`);
       if (response.ok) {
         setBackendStatus('online');
         return true;
