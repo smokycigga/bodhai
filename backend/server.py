@@ -68,19 +68,15 @@ is_production = os.getenv('RENDER') or os.getenv('FLASK_ENV') == 'production'
 vector_db = None
 
 try:
-    # Initialize ChromaDB with memory-optimized settings for production
-    if is_production:
-        logger.info("Initializing ChromaDB with production-optimized settings...")
-        # Use in-memory SQLite for production to avoid file system issues
-        os.environ['CHROMA_DB_IMPL'] = 'duckdb+parquet'
-        os.environ['CHROMA_PERSIST_DIRECTORY'] = '/tmp/chroma_db'
-    
+    # Initialize ChromaDB exactly like localhost
+    logger.info("🧠 Initializing ChromaDB with intelligent memory...")
     vector_db = VectorDBManager("./intelligent_chroma_db")
-    logger.info("🧠 ChromaDB initialized with intelligent memory (Production mode: {})".format(is_production))
+    logger.info("✅ ChromaDB initialized successfully")
 except Exception as e:
-    logger.warning(f"ChromaDB initialization failed: {e}")
+    logger.error(f"❌ ChromaDB initialization failed: {e}")
+    import traceback
+    logger.error(f"Full traceback: {traceback.format_exc()}")
     vector_db = None
-    logger.info("Continuing without intelligent memory - using fallback mode")
 
 # Initialize Gemini AI Analyzer
 try:
@@ -3168,26 +3164,17 @@ def generate_detailed_fallback_suggestions(analysis):
     return suggestions[:3]
 
 if __name__ == '__main__':
-    # Load questions with memory management
-    is_production = os.getenv('RENDER') or os.getenv('FLASK_ENV') == 'production'
-    
-    if is_production:
-        logger.info("🚀 Production mode: Loading questions in background...")
-        # Load questions in a separate thread to avoid startup timeout
-        import threading
-        def load_questions_background():
-            try:
-                logger.info("📚 Starting background question loading...")
-                load_and_vectorize_questions()
-                logger.info("✅ Background question loading completed")
-            except Exception as e:
-                logger.error(f"❌ Background question loading failed: {e}")
-        
-        threading.Thread(target=load_questions_background, daemon=True).start()
-    else:
-        # Development: Load questions normally
+    # Load and vectorize questions on startup (same as localhost)
+    logger.info("📚 Loading questions on startup...")
+    try:
         load_and_vectorize_questions()
+        logger.info("✅ Questions loaded successfully")
+    except Exception as e:
+        logger.error(f"❌ Question loading failed: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
     
     # Run the Flask app
     port = int(os.getenv('PORT', 5000))
+    is_production = os.getenv('RENDER') or os.getenv('FLASK_ENV') == 'production'
     app.run(host='0.0.0.0', port=port, debug=not is_production)
