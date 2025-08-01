@@ -14,7 +14,8 @@ const StreakCounter = ({ size = 'medium', showDetails = true }) => {
     
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/api/user-streak/${userId}`);
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_BASE_URL}/api/user-streak/${userId}`);
       
       if (response.ok) {
         const data = await response.json();

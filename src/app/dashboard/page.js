@@ -59,7 +59,7 @@ export default function Dashboard() {
       }
 
       // Fetch user statistics
-      const statsResponse = await fetch(`http://localhost:5000/api/user-stats/${userId}`, {
+      const statsResponse = await fetch(`${API_BASE_URL}/api/user-stats/${userId}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });

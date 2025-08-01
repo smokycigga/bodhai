@@ -29,16 +29,17 @@ const StudyPlannerDashboard = () => {
     try {
       setLoading(true);
       setError(null);
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
       // Fetch test results
-      const resultsResponse = await fetch(`http://localhost:5000/api/user-test-results/${userId}`);
+      const resultsResponse = await fetch(`${API_BASE_URL}/api/user-test-results/${userId}`);
       if (resultsResponse.ok) {
         const data = await resultsResponse.json();
         setTestResults(data.results || []);
       }
 
       // Fetch user stats
-      const statsResponse = await fetch(`http://localhost:5000/api/user-stats/${userId}`);
+      const statsResponse = await fetch(`${API_BASE_URL}/api/user-stats/${userId}`);
       if (statsResponse.ok) {
         const data = await statsResponse.json();
         setUserStats(data.stats || {});
