@@ -416,10 +416,17 @@ def health_check():
                 logger.warning(f"ChromaDB health check failed: {e}")
                 intelligent_memory = {"status": "error", "vectorized_questions": 0, "memory_size_mb": 0}
 
+        # Debug: Show question breakdown by exam type
+        exam_type_breakdown = {}
+        for question in all_questions:
+            exam_type = question.get('exam_type', 'unknown')
+            exam_type_breakdown[exam_type] = exam_type_breakdown.get(exam_type, 0) + 1
+
         return jsonify({
             "status": "healthy",
             "server": "running",
             "total_questions": len(all_questions),
+            "exam_type_breakdown": exam_type_breakdown,
             "intelligent_memory": intelligent_memory,
             "timestamp": datetime.now(timezone.utc).isoformat()
         }), 200
@@ -433,21 +440,30 @@ def health_check():
 def load_questions():
     """Load and vectorize questions for intelligent retrieval"""
     try:
+        logger.info("🔄 Manual question loading triggered...")
         load_and_vectorize_questions()
 
         # Get final stats
         memory_usage = vector_db.get_memory_usage() if vector_db else {}
+        
+        # Debug: Show question breakdown by exam type
+        exam_type_breakdown = {}
+        for question in all_questions:
+            exam_type = question.get('exam_type', 'unknown')
+            exam_type_breakdown[exam_type] = exam_type_breakdown.get(exam_type, 0) + 1
 
         return jsonify({
             "success": True,
             "message": "Questions loaded with intelligent memory",
             "stats": {
                 "total_questions": len(all_questions),
+                "exam_type_breakdown": exam_type_breakdown,
                 "vectorized_questions": memory_usage.get('total_questions', 0),
                 "memory_size_mb": memory_usage.get('database_size_mb', 0)
             }
         }), 200
     except Exception as e:
+        logger.error(f"Question loading failed: {e}")
         return jsonify({
             "success": False,
             "error": str(e)
