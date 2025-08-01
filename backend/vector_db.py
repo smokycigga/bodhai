@@ -12,16 +12,21 @@ class VectorDBManager:
     def __init__(self, db_path: str = "./chroma_db"):
         """Initialize ChromaDB client and embedding model with optimized settings"""
         self.db_path = db_path
+        is_production = os.getenv('RENDER') or os.getenv('FLASK_ENV') == 'production'
 
         # Enhanced ChromaDB settings for better performance and memory management
-        # Using the new ChromaDB client configuration
         try:
-            self.client = chromadb.PersistentClient(
-                path=db_path
-            )
+            if is_production:
+                # Production: Use ephemeral client to reduce memory usage
+                logging.info("🏭 Using ephemeral ChromaDB client for production")
+                self.client = chromadb.EphemeralClient()
+            else:
+                # Development: Use persistent client
+                logging.info("💻 Using persistent ChromaDB client for development")
+                self.client = chromadb.PersistentClient(path=db_path)
         except Exception as e:
-            # Fallback to basic client if persistent fails
-            logging.warning(f"Persistent client failed, using basic client: {e}")
+            # Fallback to basic client if both fail
+            logging.warning(f"ChromaDB client initialization failed, using basic client: {e}")
             self.client = chromadb.Client()
 
         # Initialize embedding model with caching for better performance
