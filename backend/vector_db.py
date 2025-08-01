@@ -24,11 +24,23 @@ class VectorDBManager:
             logging.warning(f"Persistent client failed, using basic client: {e}")
             self.client = chromadb.Client()
 
-        # Initialize embedding model with caching for better performance
-        self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+        # Initialize embedding model with memory optimization for production
+        if is_production:
+            # Use lighter model + memory optimizations for production
+            import torch
+            torch.set_num_threads(1)  # Limit CPU threads to save memory
+            self.embedder = SentenceTransformer('paraphrase-MiniLM-L3-v2', device='cpu')
+            # Reduce memory usage
+            self.embedder.max_seq_length = 128
+            logging.info("🚀 Using lightweight embedding model for production")
+        else:
+            # Use better model for development
+            self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+            logging.info("🚀 Using standard embedding model for development")
 
-        # Cache for embeddings to avoid recomputation
+        # Cache for embeddings to avoid recomputation (limited size in production)
         self.embedding_cache = {}
+        self.max_cache_size = 100 if is_production else 1000
 
         # Create collections for different exam types
         self.collections = {}
@@ -116,7 +128,11 @@ class VectorDBManager:
         embedding = self.embedder.encode(text).tolist()
 
         # Cache the embedding (limit cache size to prevent memory issues)
-        if len(self.embedding_cache) < 10000: # Limit to 10k cached embeddings
+        if len(self.embedding_cache) < self.max_cache_size:
+            self.embedding_cache[text_hash] = embedding
+        elif len(self.embedding_cache) >= self.max_cache_size:
+            # Clear cache when it gets too large
+            self.embedding_cache.clear()
             self.embedding_cache[text_hash] = embedding
 
         return embedding
