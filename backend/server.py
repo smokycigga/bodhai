@@ -69,12 +69,19 @@ except Exception as e:
     exit(1)
 
 # Initialize ChromaDB Vector Database for intelligent memory
-try:
-    vector_db = VectorDBManager("./intelligent_chroma_db")
-    logger.info("ChromaDB initialized with intelligent memory")
-except Exception as e:
-    logger.error(f"ChromaDB initialization failed: {e}")
-    exit(1)
+# Skip ChromaDB in production to avoid memory corruption issues
+is_production = os.getenv('RENDER') or os.getenv('FLASK_ENV') == 'production'
+vector_db = None
+
+if not is_production:
+    try:
+        vector_db = VectorDBManager("./intelligent_chroma_db")
+        logger.info("ChromaDB initialized with intelligent memory")
+    except Exception as e:
+        logger.warning(f"ChromaDB initialization failed: {e}")
+        vector_db = None
+else:
+    logger.info("ChromaDB disabled in production environment")
 
 # Initialize Gemini AI Analyzer
 try:
@@ -362,6 +369,10 @@ def calculate_complexity_score(content, options):
 def add_question_to_vector_db(question):
     """Add question to ChromaDB for intelligent retrieval"""
     try:
+        # Skip if vector_db is not available (production environment)
+        if vector_db is None:
+            return False
+            
         # Create Question object for ChromaDB
         question_obj = Question(
             id=question['question_id'],
@@ -409,7 +420,7 @@ def load_questions():
         load_and_vectorize_questions()
 
         # Get final stats
-        memory_usage = vector_db.get_memory_usage()
+        memory_usage = vector_db.get_memory_usage() if vector_db else {}
 
         return jsonify({
             "success": True,
