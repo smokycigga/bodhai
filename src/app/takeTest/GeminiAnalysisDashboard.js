@@ -15,7 +15,7 @@ import {
   BoltIcon,
   MagnifyingGlassIcon,
   ShieldCheckIcon,
-  CrownIcon,
+  TrophyIcon,
   AcademicCapIcon,
   EyeIcon,
   CogIcon
@@ -550,7 +550,7 @@ export default function GeminiAnalysisDashboard({ geminiAnalysis }) {
               ) : overallPerf.score_percentage < 80 ? (
                 <StarIcon className="w-6 h-6 text-white" />
               ) : (
-                <CrownIcon className="w-6 h-6 text-yellow-300" />
+                <TrophyIcon className="w-6 h-6 text-yellow-300" />
               )}
             </div>
             <div className="text-2xl font-bold text-foreground mb-1">
