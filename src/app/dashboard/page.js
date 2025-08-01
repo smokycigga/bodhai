@@ -45,7 +45,8 @@ export default function Dashboard() {
       setLoading(true);
 
       // Fetch test results
-      const resultsResponse = await fetch(`http://localhost:5000/api/user-test-results/${userId}`, {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const resultsResponse = await fetch(`${API_BASE_URL}/api/user-test-results/${userId}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });

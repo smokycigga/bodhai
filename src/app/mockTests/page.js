@@ -74,7 +74,8 @@ export default function CreateMockTest() {
 
     const fetchAvailableExamTypes = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/exam-types');
+            const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const response = await fetch(`${API_BASE_URL}/api/exam-types`);
             if (response.ok) {
                 const text = await response.text();
                 // Check if response is valid JSON
